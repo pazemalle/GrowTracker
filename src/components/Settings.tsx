@@ -222,129 +222,130 @@ export const SettingsPage: React.FC = () => {
                             ) : (
                                 <p className="text-sm text-emerald-300">{t.settings.serverMode}</p>
                             )}
-
-                            {/* Server Data Overview */}
-                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mt-3">
-                                <p className="text-xs font-bold text-slate-400 mb-3">Auf Server gespeichert</p>
-
-                                {/* Grows List */}
-                                <div className="mb-4">
-                                    <p className="text-sm font-semibold text-emerald-300 mb-2">
-                                        Grows ({grows.length})
-                                    </p>
-                                    {grows.length > 0 ? (
-                                        <div className="space-y-1 max-h-40 overflow-y-auto">
-                                            {grows.map(grow => {
-                                                const lastUpdate = grow.logs.length > 0
-                                                    ? new Date(Math.max(...grow.logs.map(log => new Date(log.date).getTime())))
-                                                    : new Date(grow.startDate);
-
-                                                return (
-                                                    <div key={grow.id} className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
-                                                        <span className="text-emerald-400">✓</span>
-                                                        <span className="flex-1 truncate">{grow.name}</span>
-                                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
-                                                            {lastUpdate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {lastUpdate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <p className="text-xs text-slate-500 italic">Keine Grows gespeichert</p>
-                                    )}
-                                </div>
-
-                                {/* Profiles List */}
-                                <div>
-                                    <p className="text-sm font-semibold text-emerald-300 mb-2">
-                                        Profile ({profiles.length})
-                                    </p>
-                                    {profiles.length > 0 ? (
-                                        <div className="space-y-1 max-h-40 overflow-y-auto">
-                                            {profiles.map(profile => {
-                                                const now = new Date();
-                                                return (
-                                                    <div key={profile.id} className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
-                                                        <span className="text-emerald-400">✓</span>
-                                                        <span className="flex-1 truncate">{profile.name}</span>
-                                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
-                                                            {now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <p className="text-xs text-slate-500 italic">Keine Profile gespeichert</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            <button onClick={handleLogout} className="btn btn-secondary w-full justify-center text-red-400 hover:text-red-300">
-                                {t.settings.logout}
-                            </button>
                         </div>
-                        ) : (
-                        <div className="space-y-4">
-                            {/* Guest Mode Warning */}
-                            <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
-                                <p className="text-xs font-bold text-yellow-300 mb-1">{t.settings.storageMode}</p>
-                                <p className="text-sm text-yellow-200">{t.settings.guestModeWarning}</p>
+
+                        {/* Server Data Overview */}
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mt-3">
+                            <p className="text-xs font-bold text-slate-400 mb-3">Auf Server gespeichert</p>
+
+                            {/* Grows List */}
+                            <div className="mb-4">
+                                <p className="text-sm font-semibold text-emerald-300 mb-2">
+                                    Grows ({grows.length})
+                                </p>
+                                {grows.length > 0 ? (
+                                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                                        {grows.map(grow => {
+                                            const lastUpdate = grow.logs && grow.logs.length > 0
+                                                ? new Date(Math.max(...grow.logs.map(log => new Date(log.date).getTime())))
+                                                : new Date(grow.startDate);
+
+                                            return (
+                                                <div key={grow.id} className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
+                                                    <span className="text-emerald-400">✓</span>
+                                                    <span className="flex-1 truncate">{grow.name}</span>
+                                                    <span className="text-slate-500 text-[10px] whitespace-nowrap">
+                                                        {lastUpdate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {lastUpdate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-500 italic">Keine Grows gespeichert</p>
+                                )}
                             </div>
 
-                            <div className="space-y-3">
-                                <input
-                                    className="input w-full"
-                                    placeholder={t.settings.username}
-                                    value={authUsername}
-                                    onChange={e => setAuthUsername(e.target.value)}
-                                />
-                                <input
-                                    className="input w-full"
-                                    type="password"
-                                    placeholder={t.settings.password}
-                                    value={authPassword}
-                                    onChange={e => setAuthPassword(e.target.value)}
-                                />
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <button onClick={handleLogin} className="btn btn-primary">
-                                        {t.settings.login}
-                                    </button>
-                                    <button onClick={handleRegister} className="btn btn-secondary">
-                                        {t.settings.register}
-                                    </button>
-                                </div>
+                            {/* Profiles List */}
+                            <div>
+                                <p className="text-sm font-semibold text-emerald-300 mb-2">
+                                    Profile ({profiles.length})
+                                </p>
+                                {profiles.length > 0 ? (
+                                    <div className="space-y-1 max-h-40 overflow-y-auto">
+                                        {profiles.map(profile => {
+                                            const now = new Date();
+                                            return (
+                                                <div key={profile.id} className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
+                                                    <span className="text-emerald-400">✓</span>
+                                                    <span className="flex-1 truncate">{profile.name}</span>
+                                                    <span className="text-slate-500 text-[10px] whitespace-nowrap">
+                                                        {now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-500 italic">Keine Profile gespeichert</p>
+                                )}
                             </div>
                         </div>
-                )}
+
+                        <button onClick={handleLogout} className="btn btn-secondary w-full justify-center text-red-400 hover:text-red-300">
+                            {t.settings.logout}
+                        </button>
                     </div>
+                ) : (
+                    <div className="space-y-4">
+                        {/* Guest Mode Warning */}
+                        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4">
+                            <p className="text-xs font-bold text-yellow-300 mb-1">{t.settings.storageMode}</p>
+                            <p className="text-sm text-yellow-200">{t.settings.guestModeWarning}</p>
+                        </div>
+
+                        <div className="space-y-3">
+                            <input
+                                className="input w-full"
+                                placeholder={t.settings.username}
+                                value={authUsername}
+                                onChange={e => setAuthUsername(e.target.value)}
+                            />
+                            <input
+                                className="input w-full"
+                                type="password"
+                                placeholder={t.settings.password}
+                                value={authPassword}
+                                onChange={e => setAuthPassword(e.target.value)}
+                            />
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={handleLogin} className="btn btn-primary">
+                                    {t.settings.login}
+                                </button>
+                                <button onClick={handleRegister} className="btn btn-secondary">
+                                    {t.settings.register}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {/* Data Management */}
-                <div className="glass-panel p-6">
-                    <div className="mb-4">
-                        <h3 className="text-lg font-bold text-white">{t.settings.dataManagement}</h3>
-                    </div>
+            <div className="glass-panel p-6">
+                <div className="mb-4">
+                    <h3 className="text-lg font-bold text-white">{t.settings.dataManagement}</h3>
+                </div>
 
-                    <div className="space-y-3">
-                        <button onClick={handleExportAll} className="btn btn-secondary w-full justify-start">
-                            <Download size={18} />
-                            {t.settings.exportAll}
-                        </button>
+                <div className="space-y-3">
+                    <button onClick={handleExportAll} className="btn btn-secondary w-full justify-start">
+                        <Download size={18} />
+                        {t.settings.exportAll}
+                    </button>
 
-                        <label className="btn btn-secondary w-full justify-start cursor-pointer">
-                            <Upload size={18} />
-                            {t.settings.importData}
-                            <input type="file" accept=".json" className="hidden" onChange={handleImportData} />
-                        </label>
+                    <label className="btn btn-secondary w-full justify-start cursor-pointer">
+                        <Upload size={18} />
+                        {t.settings.importData}
+                        <input type="file" accept=".json" className="hidden" onChange={handleImportData} />
+                    </label>
 
-                        <button onClick={handleClearAll} className="btn btn-secondary w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20 hover:border-red-900/50">
-                            <Trash2 size={18} />
-                            {t.settings.clearAll}
-                        </button>
-                    </div>
+                    <button onClick={handleClearAll} className="btn btn-secondary w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-900/20 hover:border-red-900/50">
+                        <Trash2 size={18} />
+                        {t.settings.clearAll}
+                    </button>
                 </div>
             </div>
-            );
+        </div>
+    );
 };

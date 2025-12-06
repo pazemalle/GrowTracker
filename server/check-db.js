@@ -4,9 +4,11 @@ const path = require('path');
 const dbPath = path.resolve(__dirname, 'growtracker.db');
 const db = new sqlite3.Database(dbPath);
 
+console.log(`Checking database at: ${dbPath}`);
+
 db.all('SELECT user_id, grows_json, profiles_json, last_updated FROM user_data', [], (err, rows) => {
     if (err) {
-        console.error('Error:', err);
+        console.error('Error reading database:', err);
         process.exit(1);
     }
 
@@ -27,12 +29,8 @@ db.all('SELECT user_id, grows_json, profiles_json, last_updated FROM user_data',
             console.log(`Number of Profiles: ${profiles.length}`);
 
             if (grows.length > 0) {
-                console.log('\nGrows Data:');
-                console.log(JSON.stringify(grows, null, 2));
-            }
-            if (profiles.length > 0) {
-                console.log('\nProfiles Data:');
-                console.log(JSON.stringify(profiles, null, 2));
+                console.log('\nGrows Data (First 2):');
+                console.log(JSON.stringify(grows.slice(0, 2), null, 2));
             }
         } catch (e) {
             console.log('Could not parse JSON:', e.message);

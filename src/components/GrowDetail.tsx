@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
+
 import type { LogEntry, Stage, NutrientEntry, Nutrient, StrainDistribution } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format, addDays, differenceInDays } from 'date-fns';
@@ -40,7 +40,7 @@ const getHoursFromCycle = (cycle: string): number => {
 export const GrowDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { isAuthenticated } = useAuth();
+    // const { isAuthenticated } = useAuth(); // Unused
     const { grows, profiles, updateGrow, deleteGrow } = useStore();
     const { t } = useLanguage();
 
