@@ -105,6 +105,12 @@ export const GrowDetail: React.FC = () => {
     const [customNutrientName, setCustomNutrientName] = useState('');
     const [customNutrientType, setCustomNutrientType] = useState<'veg' | 'bloom' | 'booster' | 'other'>('other');
 
+    const [showValidation, setShowValidation] = useState(false);
+
+    // Auto-Title States
+    const [isNewLogTitleManual, setIsNewLogTitleManual] = useState(false);
+    const [isEditLogTitleManual, setIsEditLogTitleManual] = useState(false);
+
     if (!grow) return <div>Grow not found</div>;
 
     // Available Nutrients (Profile + Custom)
@@ -172,6 +178,61 @@ export const GrowDetail: React.FC = () => {
         }
     }, [newLogStage, profile]); // Only run when stage changes or profile loads
 
+    // Auto-select Stage from Last Log
+
+
+    // --- Helper for Title Generation ---
+    const generateTitle = (dateStr: string, stage: Stage) => {
+        const date = new Date(dateStr);
+        const start = new Date(grow.startDate);
+        const diffTime = Math.abs(date.getTime() - start.getTime());
+        const day = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Day 1 is start date
+        const week = Math.ceil(day / 7);
+
+        let title = `${t.growDetail.day} ${day} / ${t.growDetail.week} ${week}`;
+
+        if (stage === 'flowering') {
+            // Find flowering start
+            const floweringLogs = grow.logs
+                .filter(l => l.stage === 'flowering')
+                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+            let flowerStart = floweringLogs.length > 0 ? new Date(floweringLogs[0].date) : date;
+
+            // If the current log date is BEFORE the first recorded flowering log, treat current as start?
+            // Or if we are creating the FIRST flowering log.
+            if (floweringLogs.length > 0 && date.getTime() < flowerStart.getTime()) {
+                flowerStart = date;
+            }
+
+            const flowerDiff = Math.max(0, date.getTime() - flowerStart.getTime());
+            const flowerDay = Math.floor(flowerDiff / (1000 * 60 * 60 * 24)) + 1;
+            const flowerWeek = Math.ceil(flowerDay / 7);
+
+            title += ` / BT ${flowerDay} / BW ${flowerWeek}`;
+        }
+
+        return title;
+    };
+
+    // --- Effects for Auto-Title ---
+
+    // New Log Auto-Title
+    useEffect(() => {
+        if (!isNewLogTitleManual && newLogDate) {
+            const title = generateTitle(newLogDate, newLogStage);
+            setNewLogTitle(title);
+        }
+    }, [newLogDate, newLogStage, isNewLogTitleManual, grow.startDate, grow.logs]);
+
+    // Edit Log Auto-Title
+    useEffect(() => {
+        if (!isEditLogTitleManual && editLogDate && editingLogId) {
+            const title = generateTitle(editLogDate, editLogStage);
+            setEditLogTitle(title);
+        }
+    }, [editLogDate, editLogStage, isEditLogTitleManual, editingLogId, grow.startDate, grow.logs]);
+
     // --- DLI / PPFD / Light Cycle Handlers (Event-Driven) ---
 
     // New Log Handlers
@@ -230,6 +291,13 @@ export const GrowDetail: React.FC = () => {
         if (grow.logs.length === 0) return null;
         return [...grow.logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
     }, [grow.logs]);
+
+    // Auto-select Stage from Last Log
+    useEffect(() => {
+        if (lastLog?.stage) {
+            setNewLogStage(lastLog.stage);
+        }
+    }, [lastLog]);
 
     const daysSinceStart = useMemo(() => {
         const endDate = lastLog ? new Date(lastLog.date) : new Date();
@@ -384,7 +452,9 @@ export const GrowDetail: React.FC = () => {
 
     // --- Log Edit Handlers ---
     const startEditLog = (log: LogEntry) => {
+        setShowValidation(false);
         setEditingLogId(log.id);
+        setIsEditLogTitleManual(true); // Treat existing logs as manually titeld to avoid overwrite on open
         setEditLogTitle(log.title);
         setEditLogContent(log.content);
         setEditLogDate(log.date.split('T')[0]);
@@ -402,7 +472,9 @@ export const GrowDetail: React.FC = () => {
     };
 
     const saveEditLog = () => {
+        setShowValidation(true);
         if (!editingLogId) return;
+        if (!editLogTitle) return;
 
         const updatedLogs = grow.logs.map(log => {
             if (log.id === editingLogId) {
@@ -431,6 +503,7 @@ export const GrowDetail: React.FC = () => {
 
         updateGrow({ ...grow, logs: updatedLogs });
         setEditingLogId(null);
+        setShowValidation(false);
     };
 
     const deleteLog = (logId: string) => {
@@ -491,6 +564,7 @@ export const GrowDetail: React.FC = () => {
 
     // --- New Log Handlers ---
     const handleAddLog = () => {
+        setShowValidation(true);
         if (!newLogTitle) return;
 
         const newLog: LogEntry = {
@@ -533,6 +607,9 @@ export const GrowDetail: React.FC = () => {
         setNewLogPpfd('');
         setNewLogLightCycle('');
         setNewLogNutrients([]);
+        setShowValidation(false);
+        setIsNewLogTitleManual(false); // Reset manual flag for next log
+        setNewLogTitle(generateTitle(new Date().toISOString(), grow.currentStage)); // Pre-fill for next
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -594,6 +671,8 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
     const renderLogForm = (isEdit: boolean) => {
         const title = isEdit ? editLogTitle : newLogTitle;
         const setTitle = isEdit ? setEditLogTitle : setNewLogTitle;
+        const setIsManual = isEdit ? setIsEditLogTitleManual : setIsNewLogTitleManual;
+
         const content = isEdit ? editLogContent : newLogContent;
         const setContent = isEdit ? setEditLogContent : setNewLogContent;
         const date = isEdit ? editLogDate : newLogDate;
@@ -627,38 +706,61 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
 
         return (
             <div className="space-y-4">
-                <input
-                    className="input font-bold"
-                    placeholder={t.growDetail.titlePlaceholder}
-                    value={title}
-                    onChange={e => setTitle(e.target.value)}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <input
-                        type="date"
-                        className="input"
-                        value={date}
-                        onChange={e => setDate(e.target.value)}
-                    />
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-400 whitespace-nowrap">{t.growDetail.manualDay}:</span>
-                        <input
-                            type="number"
-                            className="input"
-                            value={day}
-                            onChange={e => setDay(parseInt(e.target.value))}
-                        />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Date and Manual Day Row */}
+                    <div className="flex gap-4">
+                        <div className="flex-1">
+                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.date}</label>
+                            <input
+                                type="date"
+                                className="input w-full"
+                                value={date}
+                                onChange={e => setDate(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.manualDay}</label>
+                            <input
+                                type="number"
+                                className="input w-full"
+                                value={day}
+                                onChange={e => setDay(parseInt(e.target.value))}
+                            />
+                        </div>
                     </div>
-                    <select
-                        className="input"
-                        value={stage}
-                        onChange={e => setStage(e.target.value as Stage)}
-                    >
-                        {stages.map(s => (
-                            <option key={s} value={s}>{t.profiles.stages[s] || s}</option>
-                        ))}
-                    </select>
+
+                    {/* Stage Selection */}
+                    <div>
+                        <label className="text-xs text-slate-500 block mb-1">{t.growDetail.stage}</label>
+                        <select
+                            className="input w-full"
+                            value={stage}
+                            onChange={e => setStage(e.target.value as Stage)}
+                        >
+                            {stages.map(s => (
+                                <option key={s} value={s}>{t.profiles.stages[s] || s}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Title Input */}
+                <div>
+                    <label className="text-xs text-slate-500 block mb-1">{t.growDetail.title}</label>
+                    <input
+                        className="input font-bold w-full"
+                        style={{
+                            borderColor: showValidation && !title ? '#ef4444' : undefined,
+                            boxShadow: showValidation && !title ? '0 0 0 1px #ef4444' : undefined
+                        }}
+                        placeholder={`${t.growDetail.titlePlaceholder} *`}
+                        value={title}
+                        onChange={e => {
+                            setTitle(e.target.value);
+                            setIsManual(true);
+                            setShowValidation(false);
+                        }}
+                    />
                 </div>
 
                 {/* Environment & Water */}
@@ -866,7 +968,7 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                             <div className="flex items-center gap-3 mb-1 group">
                                 <h2 className="text-3xl font-bold gradient-text">{grow.name}</h2>
                                 <span className="px-2 py-1 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400 uppercase border border-emerald-500/30">
-                                    {t.profiles.stages[grow.currentStage] || grow.currentStage}
+                                    {t.profiles.stages[lastLog?.stage || grow.currentStage] || (lastLog?.stage || grow.currentStage)}
                                 </span>
                                 <button onClick={startEditGrow} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white">
                                     <Edit2 size={16} />
@@ -1108,7 +1210,10 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                 </div>
 
                                 <div className="flex justify-end gap-2 mt-4">
-                                    <button onClick={() => setEditingLogId(null)} className="btn btn-secondary text-sm">
+                                    <button onClick={() => {
+                                        setEditingLogId(null);
+                                        setShowValidation(false);
+                                    }} className="btn btn-secondary text-sm">
                                         {t.common.cancel}
                                     </button>
                                     <button onClick={saveEditLog} className="btn btn-primary text-sm">
@@ -1195,21 +1300,24 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                         </div>
 
                                         {/* Nutrients */}
-                                        {(log.nutrients && log.nutrients.length > 0) && (
-                                            <div className="space-y-2">
-                                                <h5 className="font-bold text-slate-400 flex items-center gap-2 border-b border-slate-700 pb-1 mb-2">
-                                                    <Beaker size={14} /> {t.growDetail.nutrients}
-                                                </h5>
-                                                <div className="space-y-1">
-                                                    {log.nutrients.map((n, i) => (
-                                                        <div key={i} className="flex justify-between items-center bg-slate-800/50 px-2 py-1 rounded">
-                                                            <span className="text-purple-300">{n.name}</span>
-                                                            <span className="font-mono text-xs text-slate-400">{n.amount}{n.unit}</span>
-                                                        </div>
-                                                    ))}
+
+                                    </div>
+                                )}
+
+                                {/* Nutrients (Separate Block) */}
+                                {((log.nutrients && log.nutrients.length > 0) || false) && (
+                                    <div className="mt-4 mb-4 bg-slate-900/40 p-3 rounded-lg border border-slate-700/50 block">
+                                        <h5 className="font-bold text-slate-400 flex items-center gap-2 border-b border-slate-700/50 pb-2 mb-3 text-sm">
+                                            <Beaker size={14} className="text-purple-400" /> {t.growDetail.nutrients}
+                                        </h5>
+                                        <div className="flex flex-wrap gap-2">
+                                            {log.nutrients!.map((n, i) => (
+                                                <div key={i} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded border border-slate-700">
+                                                    <span className="text-purple-300 text-sm font-medium">{n.name}</span>
+                                                    <span className="font-mono text-xs text-slate-400 border-l border-slate-600 pl-2">{n.amount}{n.unit}</span>
                                                 </div>
-                                            </div>
-                                        )}
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
 
