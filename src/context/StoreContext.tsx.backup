@@ -1,0 +1,185 @@
+import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import type { Grow, Profile, GrowContextType } from '../types';
+import { useAuth } from './AuthContext';
+
+const GrowContext = createContext<GrowContextType | undefined>(undefined);
+
+const STORAGE_KEY_GROWS = 'cgt_grows';
+const STORAGE_KEY_PROFILES = 'cgt_profiles';
+const API_URL = 'http://localhost:3001/api';
+
+export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const [grows, setGrows] = useState<Grow[]>([]);
+    const [profiles, setProfiles] = useState<Profile[]>([]);
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    // Get auth state (but only if AuthContext is available)
+    let token: string | null = null;
+    let isAuthenticated = false;
+    try {
+        const auth = useAuth();
+        token = auth.token;
+        isAuthenticated = auth.isAuthenticated;
+    } catch {
+        // AuthContext not available, continue in guest mode
+    }
+
+    // Load from LocalStorage on mount (only if not authenticated)
+    useEffect(() => {
+        // If authenticated, skip loading from localStorage - server is source of truth
+        if (isAuthenticated) {
+            setIsInitialized(true);
+            return;
+        }
+
+        const loadedGrows = localStorage.getItem(STORAGE_KEY_GROWS);
+        const loadedProfiles = localStorage.getItem(STORAGE_KEY_PROFILES);
+
+        if (loadedGrows) {
+            try {
+                setGrows(JSON.parse(loadedGrows));
+            } catch (e) {
+                console.error('Failed to parse grows', e);
+            }
+        }
+
+        if (loadedProfiles) {
+            try {
+                setProfiles(JSON.parse(loadedProfiles));
+            } catch (e) {
+                console.error('Failed to parse profiles', e);
+            }
+        }
+
+        setIsInitialized(true);
+    }, [isAuthenticated]);
+
+    // Fetch data from server when user logs in
+    useEffect(() => {
+        if (!isInitialized || !isAuthenticated || !token) return;
+
+        const fetchServerData = async () => {
+            try {
+                const response = await fetch(`${API_URL}/data`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const serverData = await response.json();
+                    // Only replace local data if server has data
+                    if (serverData.grows && serverData.grows.length > 0) {
+                        setGrows(serverData.grows);
+                    }
+                    if (serverData.profiles && serverData.profiles.length > 0) {
+                        setProfiles(serverData.profiles);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch server data:', error);
+            }
+        };
+
+        fetchServerData();
+    }, [isAuthenticated, token, isInitialized]);
+
+    // Save to LocalStorage whenever state changes (only in guest mode)
+    useEffect(() => {
+        if (!isInitialized) return;
+
+        // Only save to localStorage if NOT authenticated (guest mode)
+        if (!isAuthenticated) {
+            localStorage.setItem(STORAGE_KEY_GROWS, JSON.stringify(grows));
+        }
+    }, [grows, isInitialized, isAuthenticated]);
+
+    useEffect(() => {
+        if (!isInitialized) return;
+
+        // Only save to localStorage if NOT authenticated (guest mode)
+        if (!isAuthenticated) {
+            localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(profiles));
+        }
+    }, [profiles, isInitialized, isAuthenticated]);
+
+    // Sync to server when authenticated and data changes
+    useEffect(() => {
+        if (!isInitialized || !isAuthenticated || !token) return;
+
+        const syncToServer = async () => {
+            try {
+                await fetch(`${API_URL}/data`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ grows, profiles })
+                });
+                console.log('Synced to server:', { growsCount: grows.length, profilesCount: profiles.length });
+            } catch (error) {
+                console.error('Failed to sync to server:', error);
+            }
+        };
+
+        // Debounce sync by 1 second
+        const timeoutId = setTimeout(syncToServer, 1000);
+        return () => clearTimeout(timeoutId);
+    }, [grows, profiles, isAuthenticated, token, isInitialized]);
+
+    const addGrow = (grow: Grow) => {
+        setGrows((prev) => [...prev, grow]);
+    };
+
+    const updateGrow = (updatedGrow: Grow) => {
+        setGrows((prev) => prev.map((g) => (g.id === updatedGrow.id ? updatedGrow : g)));
+    };
+
+    const deleteGrow = (id: string) => {
+        setGrows((prev) => prev.filter((g) => g.id !== id));
+    };
+
+    const addProfile = (profile: Profile) => {
+        setProfiles((prev) => [...prev, profile]);
+    };
+
+    const updateProfile = (updatedProfile: Profile) => {
+        setProfiles((prev) => prev.map((p) => (p.id === updatedProfile.id ? updatedProfile : p)));
+    };
+
+    const deleteProfile = (id: string) => {
+        setProfiles((prev) => prev.filter((p) => p.id !== id));
+    };
+
+    const importData = (data: { grows: Grow[]; profiles: Profile[] }) => {
+        setGrows(data.grows);
+        setProfiles(data.profiles);
+    };
+
+    return (
+        <GrowContext.Provider
+            value={{
+                grows,
+                profiles,
+                addGrow,
+                updateGrow,
+                deleteGrow,
+                addProfile,
+                updateProfile,
+                deleteProfile,
+                importData,
+            }}
+        >
+            {children}
+        </GrowContext.Provider>
+    );
+};
+
+export const useStore = () => {
+    const context = useContext(GrowContext);
+    if (context === undefined) {
+        throw new Error('useStore must be used within a StoreProvider');
+    }
+    return context;
+};
