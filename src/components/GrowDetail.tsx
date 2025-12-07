@@ -2,13 +2,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { useLanguage } from '../context/LanguageContext';
-
 import type { LogEntry, Stage, NutrientEntry, Nutrient, StrainDistribution } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { format, addDays, differenceInDays } from 'date-fns';
 import {
     Calendar, Camera, Save, Share2,
-    AlertCircle, Download, Trash2, Edit2, X, Droplets, Thermometer, Sun, Beaker, Plus, Wind, Activity, ArrowUpDown
+    AlertCircle, Download, Trash2, Edit2, X, Droplets, Thermometer, Sun, Beaker, Plus, Wind, ArrowUpDown, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 const calculateVPD = (temp: number, humidity: number): string => {
@@ -100,7 +99,7 @@ export const GrowDetail: React.FC = () => {
     // Nutrient Selection State
     const [selectedNutrientId, setSelectedNutrientId] = useState<string>('');
     const [nutrientAmount, setNutrientAmount] = useState<string>('');
-    const [nutrientUnit, setNutrientUnit] = useState<'ml/L' | 'g/L'>('ml/L');
+    const [nutrientUnit, setNutrientUnit] = useState<'ml/L Wasser' | 'g/L Wasser' | 'g/L Substrat'>('ml/L Wasser');
     const [isAddingCustomNutrient, setIsAddingCustomNutrient] = useState(false);
     const [customNutrientName, setCustomNutrientName] = useState('');
     const [customNutrientType, setCustomNutrientType] = useState<'veg' | 'bloom' | 'booster' | 'other'>('other');
@@ -110,6 +109,7 @@ export const GrowDetail: React.FC = () => {
     // Auto-Title States
     const [isNewLogTitleManual, setIsNewLogTitleManual] = useState(false);
     const [isEditLogTitleManual, setIsEditLogTitleManual] = useState(false);
+    const [isAddingLog, setIsAddingLog] = useState(false);
 
     if (!grow) return <div>Grow not found</div>;
 
@@ -117,7 +117,7 @@ export const GrowDetail: React.FC = () => {
     const availableNutrients = useMemo(() => {
         const profileNutrients = profile?.nutrients || [];
         const customNutrients = grow.customNutrients || [];
-        return [...profileNutrients, ...customNutrients];
+        return [...profileNutrients, ...customNutrients].sort((a, b) => a.name.localeCompare(b.name));
     }, [profile, grow.customNutrients]);
 
     // Auto-calculate Day when Date changes
@@ -181,8 +181,8 @@ export const GrowDetail: React.FC = () => {
     // Auto-select Stage from Last Log
 
 
-    // --- Helper for Title Generation ---
-    const generateTitle = (dateStr: string, stage: Stage) => {
+    // --- Helper for Title Generation & Metadata ---
+    const generateLogMetadata = (dateStr: string, stage: Stage) => {
         const date = new Date(dateStr);
         const start = new Date(grow.startDate);
         const diffTime = Math.abs(date.getTime() - start.getTime());
@@ -190,6 +190,8 @@ export const GrowDetail: React.FC = () => {
         const week = Math.ceil(day / 7);
 
         let title = `${t.growDetail.day} ${day} / ${t.growDetail.week} ${week}`;
+        let flowerDay: number | undefined;
+        let flowerWeek: number | undefined;
 
         if (stage === 'flowering') {
             // Find flowering start
@@ -206,13 +208,13 @@ export const GrowDetail: React.FC = () => {
             }
 
             const flowerDiff = Math.max(0, date.getTime() - flowerStart.getTime());
-            const flowerDay = Math.floor(flowerDiff / (1000 * 60 * 60 * 24)) + 1;
-            const flowerWeek = Math.ceil(flowerDay / 7);
+            flowerDay = Math.floor(flowerDiff / (1000 * 60 * 60 * 24)) + 1;
+            flowerWeek = Math.ceil(flowerDay / 7);
 
             title += ` / BT ${flowerDay} / BW ${flowerWeek}`;
         }
 
-        return title;
+        return { title, day, week, flowerDay, flowerWeek };
     };
 
     // --- Effects for Auto-Title ---
@@ -220,7 +222,7 @@ export const GrowDetail: React.FC = () => {
     // New Log Auto-Title
     useEffect(() => {
         if (!isNewLogTitleManual && newLogDate) {
-            const title = generateTitle(newLogDate, newLogStage);
+            const { title } = generateLogMetadata(newLogDate, newLogStage);
             setNewLogTitle(title);
         }
     }, [newLogDate, newLogStage, isNewLogTitleManual, grow.startDate, grow.logs]);
@@ -228,7 +230,7 @@ export const GrowDetail: React.FC = () => {
     // Edit Log Auto-Title
     useEffect(() => {
         if (!isEditLogTitleManual && editLogDate && editingLogId) {
-            const title = generateTitle(editLogDate, editLogStage);
+            const { title } = generateLogMetadata(editLogDate, editLogStage);
             setEditLogTitle(title);
         }
     }, [editLogDate, editLogStage, isEditLogTitleManual, editingLogId, grow.startDate, grow.logs]);
@@ -330,6 +332,8 @@ export const GrowDetail: React.FC = () => {
 
         const events = [];
         const startDate = new Date(grow.startDate);
+        // User Request: Use lastLog date as reference if available, effectively "Grow Time"
+        const referenceDate = lastLog ? new Date(lastLog.date) : new Date();
 
         // Vegi End
         const vegiEndDate = addDays(startDate, profile.vegiDurationWeeks * 7);
@@ -349,8 +353,14 @@ export const GrowDetail: React.FC = () => {
             description: t.growDetail.predictions.estimatedHarvestDesc
         });
 
-        return events.filter(e => differenceInDays(e.date, new Date()) >= 0).sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 3);
-    }, [grow.startDate, profile, t]);
+        return events
+            .filter(e => {
+                const diff = differenceInDays(e.date, referenceDate);
+                return diff >= 0 && diff <= 14; // Next 2 weeks only
+            })
+            .sort((a, b) => a.date.getTime() - b.date.getTime())
+            .slice(0, 3);
+    }, [grow.startDate, profile, t, lastLog]);
 
     // Upcoming Tasks (from Profile Schedule)
     const upcomingTasks = useMemo(() => {
@@ -537,6 +547,15 @@ export const GrowDetail: React.FC = () => {
         setNutrientAmount('');
     };
 
+    const updateNutrientInLog = (index: number, field: keyof NutrientEntry, value: any, isEditMode: boolean) => {
+        const list = isEditMode ? editLogNutrients : newLogNutrients;
+        const updated = [...list];
+        updated[index] = { ...updated[index], [field]: field === 'amount' ? parseFloat(value) : value };
+
+        if (isEditMode) setEditLogNutrients(updated);
+        else setNewLogNutrients(updated);
+    };
+
     const removeNutrientFromLog = (index: number, isEditMode: boolean) => {
         if (isEditMode) {
             setEditLogNutrients(editLogNutrients.filter((_, i) => i !== index));
@@ -609,7 +628,9 @@ export const GrowDetail: React.FC = () => {
         setNewLogNutrients([]);
         setShowValidation(false);
         setIsNewLogTitleManual(false); // Reset manual flag for next log
-        setNewLogTitle(generateTitle(new Date().toISOString(), grow.currentStage)); // Pre-fill for next
+        const { title } = generateLogMetadata(new Date().toISOString(), grow.currentStage);
+        setNewLogTitle(title); // Pre-fill for next
+        setIsAddingLog(false); // Collapse form after add
     };
 
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -705,102 +726,103 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
         const nutrients = isEdit ? editLogNutrients : newLogNutrients;
 
         return (
-            <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Date and Manual Day Row */}
-                    <div className="flex gap-4">
-                        <div className="flex-1">
-                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.date}</label>
+            <div className="space-y-2">
+                {/* Header Row: Date | Title | Day | Stage */}
+                <div className="flex flex-col md:flex-row gap-2">
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <div className="w-32">
+                            {/* <label className="text-[10px] text-slate-500 block mb-0.5">{t.growDetail.date}</label> */}
                             <input
                                 type="date"
-                                className="input w-full"
+                                className="input w-full text-sm py-1"
                                 value={date}
                                 onChange={e => setDate(e.target.value)}
                             />
                         </div>
-                        <div className="flex-1">
-                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.manualDay}</label>
+                    </div>
+
+                    <div className="flex-1 order-last md:order-none">
+                        {/* <label className="text-[10px] text-slate-500 block mb-0.5">{t.growDetail.title}</label> */}
+                        <input
+                            className="input font-bold w-full text-sm py-1"
+                            style={{
+                                borderColor: showValidation && !title ? '#ef4444' : undefined,
+                                boxShadow: showValidation && !title ? '0 0 0 1px #ef4444' : undefined
+                            }}
+                            placeholder={`${t.growDetail.titlePlaceholder} *`}
+                            value={title}
+                            onChange={e => {
+                                setTitle(e.target.value);
+                                setIsManual(true);
+                                setShowValidation(false);
+                            }}
+                        />
+                    </div>
+
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <div className="w-20">
+                            {/* <label className="text-[10px] text-slate-500 block mb-0.5">{t.growDetail.manualDay}</label> */}
                             <input
                                 type="number"
-                                className="input w-full"
+                                className="input w-full text-sm py-1"
+                                placeholder={t.growDetail.manualDay}
                                 value={day}
                                 onChange={e => setDay(parseInt(e.target.value))}
+                                title={t.growDetail.manualDay}
                             />
                         </div>
-                    </div>
 
-                    {/* Stage Selection */}
-                    <div>
-                        <label className="text-xs text-slate-500 block mb-1">{t.growDetail.stage}</label>
-                        <select
-                            className="input w-full"
-                            value={stage}
-                            onChange={e => setStage(e.target.value as Stage)}
-                        >
-                            {stages.map(s => (
-                                <option key={s} value={s}>{t.profiles.stages[s] || s}</option>
-                            ))}
-                        </select>
+                        <div className="flex-1 md:w-40">
+                            {/* <label className="text-[10px] text-slate-500 block mb-0.5">{t.growDetail.stage}</label> */}
+                            <select
+                                className="input w-full text-sm py-1"
+                                value={stage}
+                                onChange={e => setStage(e.target.value as Stage)}
+                            >
+                                {stages.map(s => (
+                                    <option key={s} value={s}>{t.profiles.stages[s] || s}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                {/* Title Input */}
-                <div>
-                    <label className="text-xs text-slate-500 block mb-1">{t.growDetail.title}</label>
-                    <input
-                        className="input font-bold w-full"
-                        style={{
-                            borderColor: showValidation && !title ? '#ef4444' : undefined,
-                            boxShadow: showValidation && !title ? '0 0 0 1px #ef4444' : undefined
-                        }}
-                        placeholder={`${t.growDetail.titlePlaceholder} *`}
-                        value={title}
-                        onChange={e => {
-                            setTitle(e.target.value);
-                            setIsManual(true);
-                            setShowValidation(false);
-                        }}
-                    />
-                </div>
-
-                {/* Environment & Water */}
-                <div className="bg-slate-800/50 p-4 rounded-lg space-y-4 border border-slate-700">
-                    <h4 className="font-bold text-emerald-400 flex items-center gap-2">
-                        <Thermometer size={16} /> {t.growDetail.environment}
+                {/* Environment & Water - Compact */}
+                <div className="bg-slate-800/50 p-2 rounded-lg space-y-2 border border-slate-700">
+                    <h4 className="font-bold text-emerald-400 flex items-center gap-2 text-xs">
+                        <Thermometer size={14} /> {t.growDetail.environment}
                     </h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                        {/* Water input moved to Nutrients section */}
                         <div>
-                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.water}</label>
-                            <input className="input" placeholder="L" value={water} onChange={e => setWater(e.target.value)} type="number" step="0.1" />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.temp}>{t.growDetail.temp}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="24.0" value={temp} onChange={e => setTemp(e.target.value)} type="number" step="0.1" title={t.growDetail.temp} />
                         </div>
                         <div>
-                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.temp}</label>
-                            <input className="input" placeholder="°C" value={temp} onChange={e => setTemp(e.target.value)} type="number" step="0.1" />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.humidity}>{t.growDetail.humidity}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="60" value={humidity} onChange={e => setHumidity(e.target.value)} type="number" title={t.growDetail.humidity} />
                         </div>
                         <div>
-                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.humidity}</label>
-                            <input className="input" placeholder="%" value={humidity} onChange={e => setHumidity(e.target.value)} type="number" />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.vpd}>{t.growDetail.vpd}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="1.0" value={vpd} onChange={e => setVpd(e.target.value)} type="number" step="0.1" title={t.growDetail.vpd} />
                         </div>
                         <div>
-                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.vpd}</label>
-                            <input className="input" placeholder="kPa" value={vpd} onChange={e => setVpd(e.target.value)} type="number" step="0.1" />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.dli}>{t.growDetail.dli}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="40" value={dli} onChange={e => handleDliChange(e.target.value)} type="number" step="0.1" title={t.growDetail.dli} />
                         </div>
                         <div>
-                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.dli}</label>
-                            <input className="input" placeholder="mol/m²/d" value={dli} onChange={e => handleDliChange(e.target.value)} type="number" step="0.1" />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.ppfd}>{t.growDetail.ppfd}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="800" value={ppfd} onChange={e => handlePpfdChange(e.target.value)} type="number" title={t.growDetail.ppfd} />
                         </div>
                         <div>
-                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.ppfd}</label>
-                            <input className="input" placeholder="µmol/m²/s" value={ppfd} onChange={e => handlePpfdChange(e.target.value)} type="number" />
-                        </div>
-                        <div>
-                            <label className="text-xs text-slate-500 block mb-1">{t.growDetail.lightCycle}</label>
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.lightCycle}>{t.growDetail.lightCycle}</label>
                             <input
-                                className="input"
-                                placeholder="e.g. 18/6"
+                                className="input text-xs py-1 px-2 h-8 w-full"
+                                placeholder="18/6"
                                 value={lightCycle}
                                 onChange={e => handleLightCycleChange(e.target.value)}
                                 list="light-cycles"
+                                title={t.growDetail.lightCycle}
                             />
                             <datalist id="light-cycles">
                                 <option value="12/12" />
@@ -812,11 +834,11 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                     </div>
                 </div>
 
-                {/* Nutrients */}
-                <div className="bg-slate-800/50 p-4 rounded-lg space-y-4 border border-slate-700">
+                {/* Nutrients & Water - Compact */}
+                <div className="bg-slate-800/50 p-2 rounded-lg space-y-2 border border-slate-700">
                     <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-purple-400 flex items-center gap-2">
-                            <Beaker size={16} /> {t.growDetail.nutrients}
+                        <h4 className="font-bold text-purple-400 flex items-center gap-2 text-xs">
+                            <Beaker size={14} /> {t.growDetail.nutrients}
                         </h4>
                         <button onClick={() => setIsAddingCustomNutrient(!isAddingCustomNutrient)} className="text-xs text-emerald-400 hover:underline">
                             + {t.growDetail.customNutrient}
@@ -836,37 +858,77 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                         </div>
                     )}
 
-                    <div className="flex gap-2 items-end">
-                        <select className="input flex-1" value={selectedNutrientId} onChange={e => setSelectedNutrientId(e.target.value)}>
-                            <option value="">{t.growDetail.selectNutrient}</option>
-                            {availableNutrients.map(n => (
-                                <option key={n.id} value={n.id}>{n.name} ({n.type})</option>
-                            ))}
-                        </select>
-                        <input className="input w-24" placeholder={t.growDetail.amount} value={nutrientAmount} onChange={e => setNutrientAmount(e.target.value)} type="number" step="0.1" />
-                        <select className="input w-24" value={nutrientUnit} onChange={e => setNutrientUnit(e.target.value as any)}>
-                            <option value="ml/L">ml/L</option>
-                            <option value="g/L">g/L</option>
-                        </select>
-                        <button onClick={() => addNutrientToLog(isEdit)} className="btn btn-secondary p-2">
-                            <Plus size={18} />
-                        </button>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2">
+                        {/* Water Input - span 4 */}
+                        <div className="md:col-span-4 flex items-center gap-2 bg-blue-900/10 p-1.5 rounded border border-blue-500/20 h-auto min-h-[2.5rem]">
+                            <span className="text-xs text-slate-400 w-12">{t.growDetail.water}</span>
+                            <div className="flex items-center gap-2 flex-1">
+                                <Droplets size={14} className="text-blue-400" />
+                                <input
+                                    className="input flex-1 text-xs py-1 px-2 h-8"
+                                    placeholder="0.0"
+                                    value={water}
+                                    onChange={e => setWater(e.target.value)}
+                                    type="number"
+                                    step="0.1"
+                                />
+                                <span className="text-xs text-slate-500">L</span>
+                            </div>
+                        </div>
+
+                        {/* Nutrient Adder - span 8 */}
+                        <div className="md:col-span-8 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center min-h-[2.5rem]">
+                            <select className="input w-full sm:flex-1 text-xs py-1 px-2 h-8" value={selectedNutrientId} onChange={e => setSelectedNutrientId(e.target.value)}>
+                                <option value="">{t.growDetail.selectNutrient}</option>
+                                {availableNutrients.map(n => (
+                                    <option key={n.id} value={n.id}>{n.name} ({n.type})</option>
+                                ))}
+                            </select>
+                            <div className="flex gap-2">
+                                <input className="input flex-1 sm:w-20 text-xs py-1 px-2 h-8" placeholder={t.growDetail.amount} value={nutrientAmount} onChange={e => setNutrientAmount(e.target.value)} type="number" step="0.1" />
+                                <select className="input flex-1 sm:w-24 text-xs py-1 px-2 h-8" value={nutrientUnit} onChange={e => setNutrientUnit(e.target.value as any)}>
+                                    <option value="ml/L Wasser">ml/L</option>
+                                    <option value="g/L Wasser">g/L</option>
+                                    <option value="g/L Substrat">g/L Sub</option>
+                                </select>
+                                <button onClick={() => addNutrientToLog(isEdit)} className="btn btn-secondary p-1 h-8 w-8 flex items-center justify-center shrink-0">
+                                    <Plus size={14} />
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {nutrients.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="space-y-2">
                             {nutrients.map((n, idx) => (
-                                <span key={idx} className="bg-purple-900/30 border border-purple-500/30 text-purple-300 px-2 py-1 rounded text-sm flex items-center gap-2">
-                                    {n.name}: {n.amount}{n.unit}
-                                    <button onClick={() => removeNutrientFromLog(idx, isEdit)} className="hover:text-red-400"><X size={12} /></button>
-                                </span>
+                                <div key={idx} className="flex items-center gap-2 bg-purple-900/20 border border-purple-500/30 p-2 rounded text-sm">
+                                    <span className="text-purple-300 font-bold min-w-[100px] truncate" title={n.name}>{n.name}:</span>
+                                    <input
+                                        type="number"
+                                        value={n.amount}
+                                        onChange={e => updateNutrientInLog(idx, 'amount', e.target.value, isEdit)}
+                                        className="input w-20 h-8 text-sm py-1 px-2"
+                                    />
+                                    <select
+                                        value={n.unit}
+                                        onChange={e => updateNutrientInLog(idx, 'unit', e.target.value, isEdit)}
+                                        className="input w-32 h-8 text-sm py-1 px-2"
+                                    >
+                                        <option value="ml/L Wasser">ml/L Wasser</option>
+                                        <option value="g/L Wasser">g/L Wasser</option>
+                                        <option value="g/L Substrat">g/L Substrat</option>
+                                    </select>
+                                    <button onClick={() => removeNutrientFromLog(idx, isEdit)} className="text-red-400 hover:text-red-300 ml-auto p-1">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     )}
                 </div>
 
                 <textarea
-                    className="input min-h-[120px]"
+                    className="input min-h-[80px] text-sm"
                     placeholder={t.growDetail.contentPlaceholder}
                     value={content}
                     onChange={e => setContent(e.target.value)}
@@ -1105,28 +1167,49 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                 </div>
             )}
 
-            {/* Log Editor */}
-            <div className="glass-panel p-6">
-                <h3 className="text-lg font-bold text-white mb-4">{t.growDetail.newLogEntry}</h3>
-
-                {renderLogForm(false)}
-
-                <div className="flex justify-between items-center mt-4">
-                    <label className="btn btn-secondary cursor-pointer text-sm">
-                        <Camera size={16} /> {t.growDetail.addPhotos}
-                        <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
-                    </label>
-                    <button onClick={handleAddLog} className="btn btn-primary">
-                        <Save size={18} /> {t.growDetail.saveEntry}
+            {/* Log Editor - Collapsible */}
+            <div className="glass-panel p-4">
+                {!isAddingLog ? (
+                    <button
+                        onClick={() => setIsAddingLog(true)}
+                        className="btn btn-primary w-full py-4 text-lg font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10"
+                    >
+                        <Plus size={24} /> {t.growDetail.newLogEntry || "Neuer Log Eintrag"}
                     </button>
-                </div>
+                ) : (
+                    <>
+                        <div className="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                            <h3 className="text-lg font-bold text-white">{t.growDetail.newLogEntry}</h3>
+                            <button onClick={() => setIsAddingLog(false)} className="text-slate-500 hover:text-white">
+                                <X size={20} />
+                            </button>
+                        </div>
 
-                {newLogImages.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto py-2 mt-2">
-                        {newLogImages.map((img, idx) => (
-                            <img key={idx} src={img} alt="Preview" className="h-20 w-20 object-cover rounded border border-slate-600" />
-                        ))}
-                    </div>
+                        {renderLogForm(false)}
+
+                        <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-700">
+                            <label className="btn btn-secondary cursor-pointer text-sm py-1.5">
+                                <Camera size={16} /> {t.growDetail.addPhotos}
+                                <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
+                            </label>
+                            <div className="flex gap-2">
+                                <button onClick={() => setIsAddingLog(false)} className="btn btn-secondary text-sm py-1.5">
+                                    {t.common.cancel}
+                                </button>
+                                <button onClick={handleAddLog} className="btn btn-primary bg-emerald-500 hover:bg-emerald-600 text-sm py-1.5">
+                                    <Save size={18} /> {t.growDetail.saveEntry}
+                                </button>
+                            </div>
+                        </div>
+
+                        {newLogImages.length > 0 && (
+                            <div className="flex gap-2 overflow-x-auto py-2 mt-2">
+                                {newLogImages.map((img, idx) => (
+                                    <img key={idx} src={img} alt="Preview" className="h-16 w-16 object-cover rounded border border-slate-600" />
+                                ))}
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 
@@ -1241,68 +1324,71 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                     </div>
                                     <div>
                                         <h4 className="text-lg font-bold text-emerald-400">{log.title}</h4>
-                                        <span className="text-xs text-slate-500">{t.growDetail.day} {log.day || log.stageDay} • {t.profiles.stages[log.stage] || log.stage}</span>
+                                        <span className="text-xs text-slate-500">
+                                            {(() => {
+                                                // Re-calculate metadata for display
+                                                // Note: We could store this in the log object, but calculating it ensures it's always up to date with start date changes
+                                                const meta = generateLogMetadata(log.date, log.stage);
+                                                return (
+                                                    <>
+                                                        {t.growDetail.day} {meta.day} / {t.growDetail.week} {meta.week} • {t.profiles.stages[log.stage] || log.stage}
+                                                        {meta.flowerDay && (
+                                                            <> • BT {meta.flowerDay} / BW {meta.flowerWeek}</>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
+                                        </span>
                                     </div>
                                 </div>
 
-                                {/* Environment Data Display */}
+                                {/* Environment Data Display - Compact Badges */}
                                 {(log.water || log.environment || (log.nutrients && log.nutrients.length > 0)) && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm bg-slate-900/50 p-4 rounded-lg border border-slate-800">
-                                        {/* Environment & Water */}
-                                        <div className="space-y-2">
-                                            <h5 className="font-bold text-slate-400 flex items-center gap-2 border-b border-slate-700 pb-1 mb-2">
-                                                <Activity size={14} /> {t.growDetail.environment}
-                                            </h5>
-                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                                                {log.water && (
-                                                    <span className="flex items-center justify-between text-slate-300">
-                                                        <span className="flex items-center gap-1 text-slate-500"><Droplets size={12} /> {t.growDetail.water}</span>
-                                                        <span className="font-mono text-blue-400">{log.water}L</span>
-                                                    </span>
-                                                )}
-                                                {log.environment?.temp && (
-                                                    <span className="flex items-center justify-between text-slate-300">
-                                                        <span className="flex items-center gap-1 text-slate-500"><Thermometer size={12} /> {t.growDetail.temp}</span>
-                                                        <span className="font-mono text-red-400">{log.environment.temp}°C</span>
-                                                    </span>
-                                                )}
-                                                {log.environment?.humidity && (
-                                                    <span className="flex items-center justify-between text-slate-300">
-                                                        <span className="flex items-center gap-1 text-slate-500"><Droplets size={12} /> {t.growDetail.humidity}</span>
-                                                        <span className="font-mono text-blue-300">{log.environment.humidity}%</span>
-                                                    </span>
-                                                )}
-                                                {log.environment?.vpd && (
-                                                    <span className="flex items-center justify-between text-slate-300">
-                                                        <span className="flex items-center gap-1 text-slate-500"><Wind size={12} /> {t.growDetail.vpd}</span>
-                                                        <span className="font-mono text-emerald-400">{log.environment.vpd} kPa</span>
-                                                    </span>
-                                                )}
-                                                {log.environment?.dli && (
-                                                    <span className="flex items-center justify-between text-slate-300">
-                                                        <span className="flex items-center gap-1 text-slate-500"><Sun size={12} /> {t.growDetail.dli}</span>
-                                                        <span className="font-mono text-yellow-500">{log.environment.dli}</span>
-                                                    </span>
-                                                )}
-                                                {log.environment?.ppfd && (
-                                                    <span className="flex items-center justify-between text-slate-300">
-                                                        <span className="flex items-center gap-1 text-slate-500"><Sun size={12} /> {t.growDetail.ppfd}</span>
-                                                        <span className="font-mono text-yellow-400">{log.environment.ppfd}</span>
-                                                    </span>
-                                                )}
-                                                {log.environment?.lightCycle && (
-                                                    <span className="flex items-center justify-between text-slate-300 col-span-2">
-                                                        <span className="flex items-center gap-1 text-slate-500"><Sun size={12} /> {t.growDetail.lightCycle}</span>
-                                                        <span className="font-mono text-white">{log.environment.lightCycle}</span>
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
+                                    <div className="flex flex-wrap gap-2 mb-4 text-xs font-mono">
+                                        {/* Water */}
+                                        {log.water && (
+                                            <span className="flex items-center gap-1.5 bg-blue-900/30 text-blue-300 px-2 py-1 rounded border border-blue-500/30" title={t.growDetail.water}>
+                                                <Droplets size={12} /> {log.water}L
+                                            </span>
+                                        )}
 
-                                        {/* Nutrients */}
-
+                                        {/* Environment */}
+                                        {log.environment?.temp && (
+                                            <span className="flex items-center gap-1.5 bg-red-900/30 text-red-300 px-2 py-1 rounded border border-red-500/30" title={t.growDetail.temp}>
+                                                <Thermometer size={12} /> {log.environment.temp}°C
+                                            </span>
+                                        )}
+                                        {log.environment?.humidity && (
+                                            <span className="flex items-center gap-1.5 bg-blue-900/30 text-blue-300 px-2 py-1 rounded border border-blue-500/30" title={t.growDetail.humidity}>
+                                                <Droplets size={12} /> {log.environment.humidity}%
+                                            </span>
+                                        )}
+                                        {log.environment?.vpd && (
+                                            <span className="flex items-center gap-1.5 bg-emerald-900/30 text-emerald-300 px-2 py-1 rounded border border-emerald-500/30" title={t.growDetail.vpd}>
+                                                <Wind size={12} /> {log.environment.vpd} kPa
+                                            </span>
+                                        )}
+                                        {log.environment?.dli && (
+                                            <span className="flex items-center gap-1.5 bg-yellow-900/30 text-yellow-300 px-2 py-1 rounded border border-yellow-500/30" title={t.growDetail.dli}>
+                                                <Sun size={12} /> DLI {log.environment.dli}
+                                            </span>
+                                        )}
+                                        {log.environment?.ppfd && (
+                                            <span className="flex items-center gap-1.5 bg-orange-900/30 text-orange-300 px-2 py-1 rounded border border-orange-500/30" title={t.growDetail.ppfd}>
+                                                <Sun size={12} /> {log.environment.ppfd}
+                                            </span>
+                                        )}
+                                        {log.environment?.lightCycle && (
+                                            <span className="flex items-center gap-1.5 bg-slate-700 text-slate-300 px-2 py-1 rounded border border-slate-600" title={t.growDetail.lightCycle}>
+                                                <Sun size={12} /> {log.environment.lightCycle}
+                                            </span>
+                                        )}
                                     </div>
                                 )}
+
+                                {/* Nutrients */}
+
+
 
                                 {/* Nutrients (Separate Block) */}
                                 {((log.nutrients && log.nutrients.length > 0) || false) && (

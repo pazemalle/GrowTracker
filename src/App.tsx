@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { StoreProvider, useStore } from './context/StoreContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, setStoreContextRef } from './context/AuthContext';
-import { LayoutDashboard, Sprout, Settings, PlusCircle } from 'lucide-react';
+import { LayoutDashboard, Sprout, Settings, PlusCircle, Menu, X } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { Profiles } from './components/Profiles';
 import { NewGrow } from './components/NewGrow';
@@ -26,6 +26,7 @@ const StoreContextConnector: React.FC<{ children: React.ReactNode }> = ({ childr
 const Navigation = () => {
   const location = useLocation();
   const { t } = useLanguage();
+  const [isOpen, setIsOpen] = React.useState(false);
 
   // Get auth state
   let isAuthenticated = false;
@@ -41,64 +42,104 @@ const Navigation = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
+  // Close menu when route changes
+  useEffect(() => {
+    setIsOpen(false);
+  }, [location.pathname]);
+
   return (
-    <nav className="app-navigation">
-      <div className="nav-container">
-        <div className="nav-header">
-          <div className="nav-title">
-            <div className="nav-icon-wrapper">
-              <Sprout className="nav-icon" size={24} />
-            </div>
-            GrowTracker
+    <>
+      {/* Mobile Header Bar */}
+      <div className="mobile-header fixed top-0 left-0 right-0 h-16 bg-[#0a0f1e]/95 backdrop-blur-md border-b border-emerald-500/20 z-50 flex items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg">
+            <Sprout className="text-white" size={20} />
           </div>
-          <p className="nav-subtitle">{t.nav.appSubtitle}</p>
+          <span className="font-bold text-lg tracking-tight">GrowTracker</span>
         </div>
-
-        <div className="nav-links">
-          <Link to="/" className={`nav-link ${isActive('/') ? 'nav-link-active' : ''}`}>
-            <LayoutDashboard size={20} />
-            <span>{t.nav.dashboard}</span>
-          </Link>
-
-          <Link to="/profiles" className={`nav-link ${isActive('/profiles') ? 'nav-link-active' : ''}`}>
-            <Sprout size={20} />
-            <span>{t.nav.profiles}</span>
-          </Link>
-
-          <Link to="/new-grow" className={`nav-link ${isActive('/new-grow') ? 'nav-link-active' : ''}`}>
-            <PlusCircle size={20} />
-            <span>{t.nav.newGrow}</span>
-          </Link>
-
-          <Link to="/settings" className={`nav-link ${isActive('/settings') ? 'nav-link-active' : ''}`}>
-            <Settings size={20} />
-            <span>{t.nav.settings}</span>
-          </Link>
-        </div>
-
-        {/* User Status Badge */}
-        <div className="mt-auto p-4 border-t border-slate-700">
-          <div
-            className={`px-3 py-2 rounded-lg border text-xs font-medium ${isAuthenticated
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
-              }`}
-            title={isAuthenticated ? `Angemeldet als ${username}` : 'Gast-Modus (nur lokal)'}
-          >
-            {isAuthenticated ? `👤 ${username}` : '👤 Gast'}
-          </div>
-        </div>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+        >
+          {isOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </div>
-    </nav>
+
+      {/* Sidebar / Mobile Menu Overlay */}
+      <nav className={`
+        sidebar-nav fixed inset-y-0 left-0 z-40 bg-[#0f172a] md:bg-[#0a0f1e] border-r border-emerald-500/20
+        transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}>
+        <div className="h-full flex flex-col p-6 pt-6 md:pt-6 app-nav-content" style={{ paddingTop: '7rem' }}>
+          {/* Desktop Header */}
+          <div className="desktop-header hidden md:block mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
+                <Sprout className="text-white" size={28} />
+              </div>
+              <div className="flex flex-col">
+                <span className="font-bold text-xl tracking-tight">GrowTracker</span>
+                <span className="text-xs text-emerald-400/80 font-medium tracking-wider uppercase">{t.nav.appSubtitle}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="space-y-2 flex-1">
+            <Link to="/" className={`nav-link ${isActive('/') ? 'nav-link-active' : ''}`}>
+              <LayoutDashboard size={20} />
+              <span>{t.nav.dashboard}</span>
+            </Link>
+
+            <Link to="/profiles" className={`nav-link ${isActive('/profiles') ? 'nav-link-active' : ''}`}>
+              <Sprout size={20} />
+              <span>{t.nav.profiles}</span>
+            </Link>
+
+            <Link to="/new-grow" className={`nav-link ${isActive('/new-grow') ? 'nav-link-active' : ''}`}>
+              <PlusCircle size={20} />
+              <span>{t.nav.newGrow}</span>
+            </Link>
+
+            <Link to="/settings" className={`nav-link ${isActive('/settings') ? 'nav-link-active' : ''}`}>
+              <Settings size={20} />
+              <span>{t.nav.settings}</span>
+            </Link>
+          </div>
+
+          {/* User Status Badge */}
+          <div className="pt-6 border-t border-slate-700/50 mt-auto">
+            <div
+              className={`px-4 py-3 rounded-xl border text-sm font-medium flex items-center gap-3 ${isAuthenticated
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${isAuthenticated ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+              {isAuthenticated ? username : 'Gast-Modus'}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+    </>
   );
 };
 
 const AppContent = () => {
   return (
-    <>
+    <div className="app-layout min-h-screen bg-[#0a0f1e]">
       <Navigation />
-      <div style={{ marginLeft: '320px', minHeight: '100vh' }}>
-        <main className="container" style={{ paddingTop: '2rem', paddingBottom: '2rem' }}>
+      <div className="main-content transition-all duration-300">
+        <main className="container pt-20 md:pt-8 pb-8 px-4 mx-auto">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/profiles" element={<Profiles />} />
@@ -108,7 +149,7 @@ const AppContent = () => {
           </Routes>
         </main>
       </div>
-    </>
+    </div>
   );
 };
 

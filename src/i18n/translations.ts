@@ -307,8 +307,19 @@ export const translations = {
             totalDays: 'Total Days',
             weeks: 'Weeks',
             week: 'Week',
+            flowerDays: 'Flower Days',
+            flowerWeeks: 'Flower Weeks',
             estVegiWeeks: 'Est. Vegi Weeks',
             estFlowerWeeks: 'Est. Flower Weeks',
+
+            // Predictions
+            predictions: {
+                switchToFlower: 'Switch to Flower (12/12)',
+                switchToFlowerDesc: 'Switch light cycle to 12/12 to induce flowering.',
+                estimatedHarvest: 'Estimated Harvest',
+                estimatedHarvestDesc: 'Check trichomes for maturity.',
+            },
+
             upcomingEvents: 'Upcoming Events (Next 2 Weeks)',
             upcomingTasks: 'Upcoming Tasks',
             newLogEntry: 'New Log Entry',
@@ -340,6 +351,10 @@ export const translations = {
             addNutrient: 'Add Nutrient',
             amount: 'Amount',
             unit: 'Unit',
+            selectNutrient: 'Select Nutrient',
+            customNutrient: 'Custom Nutrient',
+            nutrientName: 'Name',
+            nutrientType: 'Type',
             manualDay: 'Day (Manual)',
             noLogsFound: 'No log entries found.',
         },

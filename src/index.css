@@ -79,6 +79,7 @@ body {
 /* Utilities */
 .container {
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   padding: var(--spacing-md);
 }
@@ -376,7 +377,8 @@ button {
    ======================================== */
 
 /* Navigation Container */
-.app-navigation {
+/* Navigation Container - Legacy Bottom Bar styles disabled */
+.app-navigation-legacy {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -389,7 +391,8 @@ button {
   box-shadow: 0 0 50px rgba(16, 185, 129, 0.2);
 }
 
-.nav-container {
+/* .nav-container handled via Tailwind flex classes */
+.nav-container-legacy {
   display: flex;
   height: 100%;
   justify-content: space-around;
@@ -398,24 +401,9 @@ button {
   padding: 0.5rem;
 }
 
-/* Desktop Navigation */
+/* Desktop Navigation styles are now largely handled by Tailwind in App.tsx */
 @media (min-width: 768px) {
-  .app-navigation {
-    top: 0;
-    bottom: auto;
-    right: auto;
-    width: 320px;
-    height: 100vh;
-    border-top: none;
-    border-right: 1px solid rgba(16, 185, 129, 0.3);
-  }
-
-  .nav-container {
-    flex-direction: column;
-    justify-content: flex-start;
-    padding: 2rem 1rem;
-    gap: 1rem;
-  }
+  /* Legacy styles preserved if needed for reference */
 }
 
 /* Navigation Header */
@@ -431,7 +419,8 @@ button {
   }
 }
 
-.nav-title {
+/* .nav-title is now handled in App.tsx via Tailwind classes */
+.nav-title-legacy {
   font-size: 1.5rem;
   font-weight: 700;
   display: flex;
@@ -727,6 +716,130 @@ button {
   .md\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  .md\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .md\:hidden {
+    display: none;
+  }
+
+  .md\:block {
+    display: block;
+  }
+
+  .md\:w-\[320px\] {
+    width: 320px;
+  }
+
+  .md\:translate-x-0 {
+    transform: translateX(0);
+  }
+
+  .md\:pt-0 {
+    padding-top: 0;
+  }
+
+  .md\:pt-0 {
+    padding-top: 0;
+  }
+
+  .md\:ml-sidebar {
+    margin-left: 320px;
+  }
+}
+
+.pt-28 {
+  padding-top: 7rem;
+}
+
+/* Positioning */
+.fixed {
+  position: fixed;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.relative {
+  position: relative;
+}
+
+.inset-0 {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.inset-y-0 {
+  top: 0;
+  bottom: 0;
+}
+
+.top-0 {
+  top: 0;
+}
+
+.left-0 {
+  left: 0;
+}
+
+.right-0 {
+  right: 0;
+}
+
+.bottom-0 {
+  bottom: 0;
+}
+
+.h-16 {
+  height: 4rem;
+}
+
+.h-full {
+  height: 100%;
+}
+
+.w-full {
+  width: 100%;
+}
+
+.z-30 {
+  z-index: 30;
+}
+
+.z-40 {
+  z-index: 40;
+}
+
+.z-50 {
+  z-index: 50;
+}
+
+.pt-20 {
+  padding-top: 5rem;
+}
+
+.translate-x-0 {
+  transform: translateX(0);
+}
+
+.-translate-x-full {
+  transform: translateX(-100%);
+}
+
+.transition-transform {
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+.transform {
+  /* required for some transform stacking contexts */
+  transform: translateX(var(--tw-translate-x)) translateY(var(--tw-translate-y));
 }
 
 /* Spacing */
@@ -957,6 +1070,91 @@ button {
 
 .group:hover .group-hover\:opacity-100 {
   opacity: 1;
+}
+
+/* ========================================
+   ROBUST RESPONSIVE NAVIGATION
+   ======================================== */
+
+/* Mobile Header: Visible by default (Mobile First), hidden on Desktop */
+.mobile-header {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .mobile-header {
+    display: none;
+  }
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  /* Full Screen on Mobile */
+  z-index: 40;
+  background-color: #0a0f1e;
+  /* Ensure background is opaque */
+  border-right: 1px solid rgba(16, 185, 129, 0.2);
+
+  /* Mobile: Hidden by default (via translate classes in App.tsx) */
+  /* We rely on App.tsx adding '-translate-x-full' or 'translate-x-0' */
+}
+
+@media (min-width: 768px) {
+  .sidebar-nav {
+    width: 320px;
+    /* Fixed width on Desktop */
+    position: fixed;
+    /* Fixed viewport position */
+    top: 0;
+    bottom: 0;
+    left: 0;
+    transform: translateX(0) !important;
+    /* Always visible on Desktop */
+    background-color: rgba(10, 15, 30, 0.95);
+    border-right: 1px solid rgba(16, 185, 129, 0.2);
+  }
+}
+
+/* Main Content Wrapper */
+.main-content {
+  width: 100%;
+  margin-left: 0;
+  padding-top: 4rem;
+  /* Mobile header spacer */
+}
+
+@media (min-width: 768px) {
+  .main-content {
+    margin-left: 320px;
+    /* Exact offset for fixed sidebar */
+    width: auto;
+    /* Take up ONLY remaining space */
+    padding-top: 0;
+  }
+}
+
+/* Adjust mobile padding override if needed */
+@media (min-width: 768px) {
+  .app-nav-content {
+    padding-top: 1.5rem !important;
+    /* Reset padding on desktop */
+  }
+}
+
+/* Desktop Header inside Sidebar */
+.desktop-header {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .desktop-header {
+    display: block;
+  }
 }
 
 .transition-opacity {

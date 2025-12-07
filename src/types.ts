@@ -29,7 +29,7 @@ export interface NutrientEntry {
   nutrientId: string;
   name: string;
   amount: number;
-  unit: 'ml/L' | 'g/L';
+  unit: 'ml/L Wasser' | 'g/L Wasser' | 'g/L Substrat';
 }
 
 export interface EnvironmentLog {
