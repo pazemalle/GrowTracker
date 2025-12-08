@@ -1,13 +1,13 @@
 import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { Link } from 'react-router-dom';
-import { Sprout, Calendar, Archive, PlusCircle, Download, Upload } from 'lucide-react';
+import { Sprout, Calendar, Archive, PlusCircle, Download, Upload, Hexagon } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
 export const Dashboard: React.FC = () => {
-    const { grows, profiles, addGrow, addProfile, importData } = useStore();
+    const { grows, profiles, setups = [], addGrow, addProfile, importData } = useStore();
     const { isAuthenticated } = useAuth();
     const { t } = useLanguage();
 
@@ -15,7 +15,7 @@ export const Dashboard: React.FC = () => {
     const archivedGrows = grows.filter(g => g.status === 'archived');
 
     const handleExportAll = () => {
-        const data = { grows, profiles };
+        const data = { grows, profiles, setups };
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
@@ -33,7 +33,7 @@ export const Dashboard: React.FC = () => {
                 if (e.target?.result) {
                     try {
                         const data = JSON.parse(e.target.result as string);
-                        if (data.grows && data.profiles) {
+                        if (data.grows) {
                             importData(data);
                             alert('Import successful!');
                         } else {
@@ -63,6 +63,14 @@ export const Dashboard: React.FC = () => {
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
+    };
+
+    const handleSetupClick = (e: React.MouseEvent, setupId: string) => {
+        e.preventDefault();
+        const setup = setups.find(s => s.id === setupId);
+        if (setup) {
+            alert(`Setup: ${setup.name}\n\nTent: ${setup.tent}\nLights: ${setup.lights}\nExhaust: ${setup.exhaust}\nFilter: ${setup.filter}\nCirculation: ${setup.circulation}\n\nNotes: ${setup.notes}`);
+        }
     };
 
     return (
@@ -122,8 +130,40 @@ export const Dashboard: React.FC = () => {
                             return (
                                 <Link key={grow.id} to={`/grow/${grow.id}`} className="glass-panel p-6 grow-card block !no-underline" style={{ textDecoration: 'none' }}>
                                     <div className="grow-card-header">
-                                        <div className="flex items-center gap-2 w-full"><h3 className="grow-card-title !no-underline flex-1">{grow.name}</h3><span className="text-xs opacity-60" title={isAuthenticated ? 'Auf Server gespeichert' : 'Nur lokal gespeichert'}>{isAuthenticated ? '☁️' : '💾'}</span></div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-col w-full">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h3 className="grow-card-title !no-underline mr-1">{grow.name}</h3>
+                                                <span className="text-xs opacity-60" title={isAuthenticated ? 'Auf Server gespeichert' : 'Nur lokal gespeichert'}>{isAuthenticated ? '☁️' : '💾'}</span>
+
+                                                {/* Linked Setups */}
+                                                {(() => {
+                                                    const linkedSetups = setups.filter(s =>
+                                                        (grow.setupIds && grow.setupIds.includes(s.id)) ||
+                                                        (grow.setupId === s.id)
+                                                    );
+
+                                                    if (linkedSetups.length > 0) {
+                                                        return (
+                                                            <div className="flex flex-wrap gap-1 ml-2">
+                                                                {linkedSetups.map(s => (
+                                                                    <div
+                                                                        key={s.id}
+                                                                        onClick={(e) => handleSetupClick(e, s.id)}
+                                                                        className="flex items-center gap-1 text-[10px] font-bold text-slate-300 bg-slate-700/50 hover:bg-slate-700 px-1.5 py-0.5 rounded border border-slate-600 cursor-pointer transition-colors"
+                                                                        title={s.tent ? `${s.name} (${s.tent})` : s.name}
+                                                                    >
+                                                                        <Hexagon size={10} className="text-emerald-500" />
+                                                                        {s.name}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })()}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 self-start">
                                             <span className="grow-card-badge">
                                                 {t.profiles.stages[lastLog ? lastLog.stage : grow.currentStage] || (lastLog ? lastLog.stage : grow.currentStage)}
                                             </span>
@@ -137,12 +177,11 @@ export const Dashboard: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="grow-card-date">
+                                    <div className="grow-card-date mt-2">
                                         <Calendar size={14} />
                                         <span>{t.dashboard.started} {format(new Date(grow.startDate), 'MMM do, yyyy')}</span>
                                     </div>
 
-                                    {/* Plant & Strain Info */}
                                     {/* Plant & Strain Info */}
                                     <div className="mt-3">
                                         {grow.strainDistribution && grow.strainDistribution.length > 0 ? (

@@ -1,41 +1,38 @@
 # 🌱 Cannabis Grow Tracker
 
-A powerful, modern, and full-stack application designed to help you plan, track, and optimize your cannabis cultivation journey.
+A powerful, modern, and full-stack application designed to help you plan, track, and optimize your cannabis cultivation journey. Now featuring cloud synchronization, multi-setup management, and a comprehensive seed bank.
 
 ## ✨ Features
 
-- **📊 Dashboard Overview**: Get a quick snapshot of all your active grows, current stages, and days since start.
+- **📊 Dashboard Overview**: Get a quick snapshot of all your active grows, current stages, and days since start. Now displays assigned setups directly on the card.
 - **📝 Detailed Logging**: Track every detail of your grow including:
   - **Environment**: Temperature, Humidity, VPD (Auto-calculated), DLI, PPFD.
   - **Nutrients**: Log nutrient feedings with support for custom nutrient profiles.
-  - **Photos**: Attach images to your logs to visually track progress.
+  - **Media**: Attach images to your logs to visually track progress.
 - **🧠 Smart Automation**:
   - **VPD Calculation**: Automatically calculates Vapor Pressure Deficit based on your inputs.
   - **Auto-Titles**: Log titles are automatically generated based on the day and week (e.g., "Tag 15 / Woche 3").
   - **Stage Sync**: Automatically detects and syncs the current growth stage from your latest logs.
-- **🧬 Grow Profiles**: Create and save reusable templates (Veg/Flower duration, target values) to streamline new grows.
-- **🔄 Hybrid Storage**:
-  - **Guest Mode**: All data stored locally in your browser (IndexedDB).
-  - **Server Mode**: Securely sync your data to the backend SQLite database.
-- **🌍 Multi-Language**: Fully localized in **German (DE)** and **English (EN)**.
+- **🎪 Setup Manager**: manage multiple grow tents and environments. Track lights, exhaust, filters, and circulation fans for each setup.
+- **🧬 Seed Bank**: Organize your seed inventory. Track breeders, strains, phenotypes (Auto/Fem/Reg), flowering times, and stock levels.
+- **👤 User Management**:
+  - **Account System**: Register and login to sync your data across devices.
+  - **Admin Panel**: Manage users, reset passwords, and toggle roles (Admin/User).
+  - **Hybrid Storage**: Use locally (Guest Mode) or sync to the server (Authenticated).
+- **🌍 Internationalization**: Fully translated into English and German.
+- **🎨 Modern UI**: Sleek, dark-mode glassmorphism design with smooth fade-in animations.
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 19, Vite, Tailwind CSS, Lucide Icons
+- **Frontend**: React, TailwindCSS, Lucide Icons, Vite
 - **Backend**: Node.js, Express
-- **Database**: SQLite (Simple file-based, no setup required)
-- **Language**: TypeScript
+- **Database**: SQLite (Stored locally on server) + JSON fallback
 
 ## 🚀 Getting Started
 
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) (Version 18 or higher recommended)
-- [npm](https://www.npmjs.com/) (usually comes with Node.js)
-
 ### Installation
 
-1. **Clone the repository** (or download the source code):
+1. **Clone the repository**:
 
     ```bash
     git clone https://github.com/pazemalle/GrowTracker.git
@@ -50,7 +47,7 @@ A powerful, modern, and full-stack application designed to help you plan, track,
 
 ### ▶️ Running the App
 
-The easiest way to start the application is using the "full" development mode, which starts both the Backend API and the Frontend at the same time.
+The easiest way to start the application is using the "full" development mode, which starts both the Backend API and the Frontend concurrently.
 
 1. **Start Development Server**:
 
@@ -60,7 +57,7 @@ The easiest way to start the application is using the "full" development mode, w
 
 2. **Open Browser**:
     - The application will be available at: `http://localhost:5173`
-    - The API server runs on: `http://localhost:3000`
+    - The API server runs on: `http://localhost:3001` (Note: Updated port)
 
 ### Alternate Manual Startup
 
@@ -82,8 +79,9 @@ npm run dev
 
 - `/src` - React Frontend application
 - `/server` - Express Backend & SQLite Database (`growtracker.db`)
-- `/src/i18n` - Translations
-- `/src/components` - React Components
+- `/src/i18n` - Translations (EN/DE)
+- `/src/components` - React Components (Dashboard, GrowDetail, SetupManager, SeedBank, etc.)
+- `/src/context` - State Management (Store, Auth, Language)
 
 ## 🤝 Contributing
 

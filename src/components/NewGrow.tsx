@@ -4,16 +4,17 @@ import { v4 as uuidv4 } from 'uuid';
 import { useStore } from '../context/StoreContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { Grow } from '../types';
-import { Sprout, Calendar, ArrowRight } from 'lucide-react';
+import { Sprout, Calendar, ArrowRight, Hexagon } from 'lucide-react';
 
 export const NewGrow: React.FC = () => {
     const navigate = useNavigate();
-    const { profiles, addGrow } = useStore();
+    const { profiles, addGrow, setups = [] } = useStore();
     const { t } = useLanguage();
 
     const [name, setName] = useState('');
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedProfileId, setSelectedProfileId] = useState<string>('');
+    const [selectedSetupIds, setSelectedSetupIds] = useState<string[]>([]);
     const [strainDistribution, setStrainDistribution] = useState<{ id: string, name: string, count: number }[]>([]);
     const [newStrainName, setNewStrainName] = useState('');
     const [newStrainCount, setNewStrainCount] = useState<number>(1);
@@ -34,6 +35,14 @@ export const NewGrow: React.FC = () => {
         setStrainDistribution(strainDistribution.filter(s => s.id !== id));
     };
 
+    const toggleSetup = (id: string) => {
+        if (selectedSetupIds.includes(id)) {
+            setSelectedSetupIds(selectedSetupIds.filter(sId => sId !== id));
+        } else {
+            setSelectedSetupIds([...selectedSetupIds, id]);
+        }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -47,6 +56,7 @@ export const NewGrow: React.FC = () => {
             name,
             startDate,
             profileId: selectedProfileId || undefined,
+            setupIds: selectedSetupIds,
             status: 'active',
             currentStage: 'seedling',
             logs: [],
@@ -59,7 +69,7 @@ export const NewGrow: React.FC = () => {
     };
 
     return (
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto animate-fade-in">
             <h2 className="text-3xl font-bold gradient-text mb-2">{t.newGrow.title}</h2>
             <p className="text-slate-400 mb-8">{t.newGrow.subtitle}</p>
 
@@ -90,6 +100,36 @@ export const NewGrow: React.FC = () => {
                             value={startDate}
                             onChange={e => setStartDate(e.target.value)}
                         />
+                    </div>
+                </div>
+
+                {/* Setup Selection */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
+                        <Hexagon size={16} className="text-emerald-500" /> Grow Setup
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {setups.map(s => (
+                            <div
+                                key={s.id}
+                                onClick={() => toggleSetup(s.id)}
+                                className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center gap-3 ${selectedSetupIds.includes(s.id)
+                                    ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300'
+                                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                                    }`}
+                            >
+                                <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedSetupIds.includes(s.id) ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500'}`}>
+                                    {selectedSetupIds.includes(s.id) && <Hexagon size={10} className="text-white fill-white" />}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="font-medium text-sm">{s.name}</div>
+                                    <div className="text-xs opacity-70">{s.tent || 'No Size'}</div>
+                                </div>
+                            </div>
+                        ))}
+                        {setups.length === 0 && (
+                            <p className="text-slate-500 text-sm italic col-span-2">No setups created yet.</p>
+                        )}
                     </div>
                 </div>
 

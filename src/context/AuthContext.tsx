@@ -3,7 +3,8 @@ import React, { createContext, useContext, useState, type ReactNode } from 'reac
 interface AuthContextType {
     token: string | null;
     username: string | null;
-    login: (token: string, username: string) => void;
+    role: string | null; // Add role
+    login: (token: string, username: string, role: string) => void;
     logout: () => void;
     isAuthenticated: boolean;
     isLoggingOut: boolean;
@@ -21,13 +22,16 @@ export const setStoreContextRef = (ref: any) => {
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [token, setToken] = useState<string | null>(localStorage.getItem('cgt_token'));
     const [username, setUsername] = useState<string | null>(localStorage.getItem('cgt_username'));
+    const [role, setRole] = useState<string | null>(localStorage.getItem('cgt_role')); // Restore role
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-    const login = (newToken: string, newUsername: string) => {
+    const login = (newToken: string, newUsername: string, newRole: string) => {
         localStorage.setItem('cgt_token', newToken);
         localStorage.setItem('cgt_username', newUsername);
+        localStorage.setItem('cgt_role', newRole); // Save role
         setToken(newToken);
         setUsername(newUsername);
+        setRole(newRole);
     };
 
     const logout = () => {
@@ -51,6 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // Clear state
             setToken(null);
             setUsername(null);
+            setRole(null);
 
             // Reload page
             setTimeout(() => {
@@ -60,7 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     return (
-        <AuthContext.Provider value={{ token, username, login, logout, isAuthenticated: !!token, isLoggingOut }}>
+        <AuthContext.Provider value={{ token, username, role, login, logout, isAuthenticated: !!token, isLoggingOut }}>
             {children}
         </AuthContext.Provider>
     );

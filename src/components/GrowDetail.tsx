@@ -7,7 +7,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { format, addDays, differenceInDays } from 'date-fns';
 import {
     Calendar, Camera, Save, Share2,
-    AlertCircle, Download, Trash2, Edit2, X, Droplets, Thermometer, Sun, Beaker, Plus, Wind, ArrowUpDown, ChevronDown, ChevronUp
+    Download, Trash2, Edit2, X, Droplets, Thermometer, Sun, Beaker, Plus, Wind,
+    AlertCircle, ArrowUpDown, Hexagon
 } from 'lucide-react';
 
 const calculateVPD = (temp: number, humidity: number): string => {
@@ -40,17 +41,19 @@ export const GrowDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     // const { isAuthenticated } = useAuth(); // Unused
-    const { grows, profiles, updateGrow, deleteGrow } = useStore();
+    const { grows, profiles, setups, updateGrow, deleteGrow } = useStore();
     const { t } = useLanguage();
 
     const grow = grows.find(g => g.id === id);
     const profile = profiles.find(p => p.id === grow?.profileId);
+    const linkedSetups = setups.filter(s => grow?.setupIds?.includes(s.id) || grow?.setupId === s.id);
 
     // Grow Edit State
     const [isEditingGrow, setIsEditingGrow] = useState(false);
     const [editGrowName, setEditGrowName] = useState('');
     const [editGrowDate, setEditGrowDate] = useState('');
     const [editGrowProfileId, setEditGrowProfileId] = useState('');
+    const [editGrowSetupIds, setEditGrowSetupIds] = useState<string[]>([]);
     const [editPlantCount, setEditPlantCount] = useState<number | ''>('');
     const [editStrainDistribution, setEditStrainDistribution] = useState<StrainDistribution[]>([]);
 
@@ -411,6 +414,7 @@ export const GrowDetail: React.FC = () => {
         setEditGrowName(grow.name);
         setEditGrowDate(grow.startDate);
         setEditGrowProfileId(grow.profileId || '');
+        setEditGrowSetupIds(grow.setupIds || (grow.setupId ? [grow.setupId] : []));
         setEditPlantCount(grow.plantCount || '');
 
         // Auto-migrate legacy strains to distribution if distribution is empty
@@ -454,6 +458,7 @@ export const GrowDetail: React.FC = () => {
             name: editGrowName,
             startDate: editGrowDate,
             profileId: editGrowProfileId || undefined,
+            setupIds: editGrowSetupIds,
             plantCount: typeof finalPlantCount === 'number' ? finalPlantCount : (finalPlantCount ? parseInt(finalPlantCount as string) : undefined),
             strainDistribution: editStrainDistribution
         });
@@ -887,8 +892,8 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                             <div className="flex gap-2">
                                 <input className="input flex-1 sm:w-20 text-xs py-1 px-2 h-8" placeholder={t.growDetail.amount} value={nutrientAmount} onChange={e => setNutrientAmount(e.target.value)} type="number" step="0.1" />
                                 <select className="input flex-1 sm:w-24 text-xs py-1 px-2 h-8" value={nutrientUnit} onChange={e => setNutrientUnit(e.target.value as any)}>
-                                    <option value="ml/L Wasser">ml/L</option>
-                                    <option value="g/L Wasser">g/L</option>
+                                    <option value="ml/L">ml/L</option>
+                                    <option value="g/L">g/L</option>
                                     <option value="g/L Substrat">g/L Sub</option>
                                 </select>
                                 <button onClick={() => addNutrientToLog(isEdit)} className="btn btn-secondary p-1 h-8 w-8 flex items-center justify-center shrink-0">
@@ -914,9 +919,9 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                         onChange={e => updateNutrientInLog(idx, 'unit', e.target.value, isEdit)}
                                         className="input w-32 h-8 text-sm py-1 px-2"
                                     >
-                                        <option value="ml/L Wasser">ml/L Wasser</option>
-                                        <option value="g/L Wasser">g/L Wasser</option>
-                                        <option value="g/L Substrat">g/L Substrat</option>
+                                        <option value="ml/L">ml/L</option>
+                                        <option value="g/L">g/L</option>
+                                        <option value="g/L Substrat">g/L Sub</option>
                                     </select>
                                     <button onClick={() => removeNutrientFromLog(idx, isEdit)} className="text-red-400 hover:text-red-300 ml-auto p-1">
                                         <Trash2 size={16} />
@@ -938,7 +943,7 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
     };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-fade-in">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="flex-1 w-full">
@@ -967,6 +972,40 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                         <option key={p.id} value={p.id}>{p.name}</option>
                                     ))}
                                 </select>
+                            </div>
+
+                            {/* Setup Selection (Multi) */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-400 mb-2">Grow Setups</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {setups.map(s => (
+                                        <div
+                                            key={s.id}
+                                            onClick={() => {
+                                                if (editGrowSetupIds.includes(s.id)) {
+                                                    setEditGrowSetupIds(editGrowSetupIds.filter(id => id !== s.id));
+                                                } else {
+                                                    setEditGrowSetupIds([...editGrowSetupIds, s.id]);
+                                                }
+                                            }}
+                                            className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center gap-3 ${editGrowSetupIds.includes(s.id)
+                                                ? 'bg-emerald-500/10 border-emerald-500 text-emerald-300'
+                                                : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-600'
+                                                }`}
+                                        >
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center ${editGrowSetupIds.includes(s.id) ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500'}`}>
+                                                {editGrowSetupIds.includes(s.id) && <Hexagon size={10} className="text-white fill-white" />}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-medium text-sm">{s.name}</div>
+                                                <div className="text-xs opacity-70">{s.tent || 'No Size'}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {setups.length === 0 && (
+                                        <p className="text-slate-500 text-sm italic">No setups available.</p>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Plant & Strain Manager */}
@@ -1023,6 +1062,7 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                 <button onClick={saveEditGrow} className="btn btn-primary text-sm">
                                     <Save size={16} /> {t.common.saveChanges}
                                 </button>
+
                             </div>
                         </div>
                     ) : (
@@ -1040,6 +1080,18 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                 <Calendar size={14} /> {t.dashboard.started} {format(new Date(grow.startDate), 'MMMM do, yyyy')}
                                 {profile && <span className="text-emerald-500">• {profile.name}</span>}
                             </p>
+
+                            {/* Linked Setups */}
+                            {linkedSetups.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-3">
+                                    {linkedSetups.map(s => (
+                                        <span key={s.id} className="text-xs font-bold px-2 py-0.5 rounded border border-slate-600 bg-slate-800 text-slate-300 flex items-center gap-1">
+                                            <Hexagon size={10} className="text-emerald-500" />
+                                            {s.name}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
 
                             {/* Plant & Strain Info */}
                             {grow.strainDistribution && grow.strainDistribution.length > 0 ? (
@@ -1122,50 +1174,54 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
             </div>
 
             {/* Predictions */}
-            {predictions.length > 0 && (
-                <div className="glass-panel p-6 border-l-4 border-l-blue-500">
-                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                        <AlertCircle size={20} className="text-blue-400" /> {t.growDetail.upcomingEvents}
-                    </h3>
-                    <div className="space-y-3">
-                        {predictions.map((pred, idx) => (
-                            <div key={idx} className="flex items-center gap-4 bg-slate-800/50 p-3 rounded-lg">
-                                <div className="text-center min-w-[60px]">
-                                    <span className="block text-sm font-bold text-blue-400">{format(pred.date, 'MMM d')}</span>
-                                    <span className="text-xs text-slate-500">{format(pred.date, 'EEE')}</span>
+            {
+                predictions.length > 0 && (
+                    <div className="glass-panel p-6 border-l-4 border-l-blue-500">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <AlertCircle size={20} className="text-blue-400" /> {t.growDetail.upcomingEvents}
+                        </h3>
+                        <div className="space-y-3">
+                            {predictions.map((pred, idx) => (
+                                <div key={idx} className="flex items-center gap-4 bg-slate-800/50 p-3 rounded-lg">
+                                    <div className="text-center min-w-[60px]">
+                                        <span className="block text-sm font-bold text-blue-400">{format(pred.date, 'MMM d')}</span>
+                                        <span className="text-xs text-slate-500">{format(pred.date, 'EEE')}</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-200">{pred.title}</h4>
+                                        <p className="text-sm text-slate-400">{pred.description}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-200">{pred.title}</h4>
-                                    <p className="text-sm text-slate-400">{pred.description}</p>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Upcoming Tasks (Profile Schedule) */}
-            {upcomingTasks.length > 0 && (
-                <div className="glass-panel p-6 border-l-4 border-l-purple-500">
-                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                        <Calendar size={20} className="text-purple-400" /> {t.growDetail.upcomingTasks || "Upcoming Tasks"}
-                    </h3>
-                    <div className="space-y-3">
-                        {upcomingTasks.map((task, idx) => (
-                            <div key={idx} className="flex items-center gap-4 bg-slate-800/50 p-3 rounded-lg">
-                                <div className="text-center min-w-[60px]">
-                                    <span className="block text-sm font-bold text-purple-400">{format(task.date, 'MMM d')}</span>
-                                    <span className="text-xs text-slate-500">Day {task.day}</span>
+            {
+                upcomingTasks.length > 0 && (
+                    <div className="glass-panel p-6 border-l-4 border-l-purple-500">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <Calendar size={20} className="text-purple-400" /> {t.growDetail.upcomingTasks || "Upcoming Tasks"}
+                        </h3>
+                        <div className="space-y-3">
+                            {upcomingTasks.map((task, idx) => (
+                                <div key={idx} className="flex items-center gap-4 bg-slate-800/50 p-3 rounded-lg">
+                                    <div className="text-center min-w-[60px]">
+                                        <span className="block text-sm font-bold text-purple-400">{format(task.date, 'MMM d')}</span>
+                                        <span className="text-xs text-slate-500">Day {task.day}</span>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-200">{task.task}</h4>
+                                        <p className="text-sm text-slate-400">{t.profiles.stages[grow.currentStage]}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-200">{task.task}</h4>
-                                    <p className="text-sm text-slate-400">{t.profiles.stages[grow.currentStage]}</p>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* Log Editor - Collapsible */}
             <div className="glass-panel p-4">
@@ -1421,6 +1477,6 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                     </div>
                 ))}
             </div>
-        </div>
+        </div >
     );
 };

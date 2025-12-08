@@ -1,18 +1,164 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { Globe, Download, Upload, Trash2 } from 'lucide-react';
+import { Globe, Download, Upload, Trash2, Key, Shield, ShieldOff, Lock } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
 const API_URL = 'http://localhost:3001/api';
 
 export const SettingsPage: React.FC = () => {
     const { language, setLanguage, t } = useLanguage();
-    const { grows, profiles, importData } = useStore();
-    const { isAuthenticated, username, login, logout } = useAuth();
+    const {
+        grows,
+        profiles,
+        setups,
+        seeds,
+        importData,
+        clearData
+    } = useStore();
+    const { isAuthenticated, username, role, login, logout } = useAuth();
 
     const [authUsername, setAuthUsername] = useState('');
     const [authPassword, setAuthPassword] = useState('');
+
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    // Admin State
+    const [adminUsers, setAdminUsers] = useState<any[]>([]);
+    const [showAdminPanel, setShowAdminPanel] = useState(false);
+
+    React.useEffect(() => {
+        if (isAuthenticated && role === 'admin' && showAdminPanel) {
+            fetchUsers();
+        }
+    }, [isAuthenticated, role, showAdminPanel]);
+
+    const handleChangePassword = async () => {
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            alert('All fields required');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            alert('New passwords do not match');
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('cgt_token');
+            const response = await fetch(`${API_URL}/auth/change-password`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+
+            if (response.ok) {
+                alert('Password changed successfully');
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Error changing password');
+            }
+        } catch (error) {
+            alert('Error connecting to server');
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const token = localStorage.getItem('cgt_token');
+            const response = await fetch(`${API_URL}/admin/users`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setAdminUsers(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch users');
+        }
+    };
+
+    const handleDeleteUser = async (userId: number) => {
+        if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
+
+        try {
+            const token = localStorage.getItem('cgt_token');
+            const response = await fetch(`${API_URL}/admin/users/${userId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                alert('User deleted');
+                fetchUsers(); // Refresh list
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Error deleting user');
+            }
+        } catch (error) {
+            alert('Error connecting to server');
+        }
+    };
+
+    const handleToggleRole = async (userId: number, currentRole: string) => {
+        const newRole = currentRole === 'admin' ? 'user' : 'admin';
+        if (!confirm(`Change role to ${newRole}?`)) return;
+
+        try {
+            const token = localStorage.getItem('cgt_token');
+            const response = await fetch(`${API_URL}/admin/users/${userId}/role`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ role: newRole })
+            });
+
+            if (response.ok) {
+                fetchUsers();
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Error updating role');
+            }
+        } catch (error) {
+            alert('Error connecting to server');
+        }
+    };
+
+    const handleAdminResetPassword = async (userId: number) => {
+        const newPassword = prompt('Enter new password for user:');
+        if (!newPassword || newPassword.length < 4) return alert('Password too short or cancelled');
+
+        try {
+            const token = localStorage.getItem('cgt_token');
+            const response = await fetch(`${API_URL}/admin/users/${userId}/password`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ password: newPassword })
+            });
+
+            if (response.ok) {
+                alert('Password reset successfully');
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Error resetting password');
+            }
+        } catch (error) {
+            alert('Error connecting to server');
+        }
+    };
 
     const handleLogin = async () => {
         if (!authUsername || !authPassword) {
@@ -33,7 +179,7 @@ export const SettingsPage: React.FC = () => {
             }
 
             const data = await response.json();
-            login(data.token, data.username);
+            login(data.token, data.username, data.role);
             alert(t.settings.loginSuccess);
             setAuthUsername('');
             setAuthPassword('');
@@ -69,7 +215,7 @@ export const SettingsPage: React.FC = () => {
 
             if (loginResponse.ok) {
                 const loginData = await loginResponse.json();
-                login(loginData.token, loginData.username);
+                login(loginData.token, loginData.username, loginData.role);
                 alert(t.settings.registerSuccess);
                 setAuthUsername('');
                 setAuthPassword('');
@@ -96,13 +242,15 @@ export const SettingsPage: React.FC = () => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ grows, profiles })
+                body: JSON.stringify({ grows, profiles, setups, seeds })
             });
 
             if (uploadResponse.ok) {
                 // Clear local storage directly to exit Hybrid mode
                 localStorage.removeItem('cgt_grows');
                 localStorage.removeItem('cgt_profiles');
+                localStorage.removeItem('cgt_setups');
+                localStorage.removeItem('cgt_seeds');
 
                 // Reload page to refresh state
                 window.location.reload();
@@ -145,13 +293,13 @@ export const SettingsPage: React.FC = () => {
 
     const handleClearAll = () => {
         if (confirm(t.settings.clearAllConfirm)) {
-            importData({ grows: [], profiles: [] });
+            clearData();
             alert('All data cleared!');
         }
     };
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-fade-in">
             <div>
                 <h2 className="text-3xl font-bold gradient-text">{t.settings.title}</h2>
                 <p className="text-slate-400">{t.settings.subtitle}</p>
@@ -209,7 +357,7 @@ export const SettingsPage: React.FC = () => {
                         {/* Storage Mode Indicator */}
                         <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
                             <p className="text-xs font-bold text-slate-400 mb-2">{t.settings.storageMode}</p>
-                            {localStorage.getItem('cgt_grows') || localStorage.getItem('cgt_profiles') ? (
+                            {localStorage.getItem('cgt_grows') || localStorage.getItem('cgt_profiles') || localStorage.getItem('cgt_setups') || localStorage.getItem('cgt_seeds') ? (
                                 <>
                                     <p className="text-sm text-blue-300 mb-2">{t.settings.hybridMode}</p>
                                     <button
@@ -234,22 +382,12 @@ export const SettingsPage: React.FC = () => {
                                     Grows ({grows.length})
                                 </p>
                                 {grows.length > 0 ? (
-                                    <div className="space-y-1 max-h-40 overflow-y-auto">
-                                        {grows.map(grow => {
-                                            const lastUpdate = grow.logs && grow.logs.length > 0
-                                                ? new Date(Math.max(...grow.logs.map(log => new Date(log.date).getTime())))
-                                                : new Date(grow.startDate);
-
-                                            return (
-                                                <div key={grow.id} className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
-                                                    <span className="text-emerald-400">✓</span>
-                                                    <span className="flex-1 truncate">{grow.name}</span>
-                                                    <span className="text-slate-500 text-[10px] whitespace-nowrap">
-                                                        {lastUpdate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {lastUpdate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
+                                    <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
+                                        <span className="text-emerald-400">✓</span>
+                                        <span className="flex-1 truncate">GrowsDB (Synchronisiert)</span>
+                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
+                                            {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     </div>
                                 ) : (
                                     <p className="text-xs text-slate-500 italic">Keine Grows gespeichert</p>
@@ -262,22 +400,51 @@ export const SettingsPage: React.FC = () => {
                                     Profile ({profiles.length})
                                 </p>
                                 {profiles.length > 0 ? (
-                                    <div className="space-y-1 max-h-40 overflow-y-auto">
-                                        {profiles.map(profile => {
-                                            const now = new Date();
-                                            return (
-                                                <div key={profile.id} className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
-                                                    <span className="text-emerald-400">✓</span>
-                                                    <span className="flex-1 truncate">{profile.name}</span>
-                                                    <span className="text-slate-500 text-[10px] whitespace-nowrap">
-                                                        {now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
+                                    <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
+                                        <span className="text-emerald-400">✓</span>
+                                        <span className="flex-1 truncate">ProfileDB (Synchronisiert)</span>
+                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
+                                            {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     </div>
                                 ) : (
                                     <p className="text-xs text-slate-500 italic">Keine Profile gespeichert</p>
+                                )}
+                            </div>
+
+                            {/* Setups List */}
+                            <div className="mt-4">
+                                <p className="text-sm font-semibold text-emerald-300 mb-2">
+                                    Setups ({setups.length})
+                                </p>
+                                {setups.length > 0 ? (
+                                    <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
+                                        <span className="text-emerald-400">✓</span>
+                                        <span className="flex-1 truncate">SetupsDB (Synchronisiert)</span>
+                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
+                                            {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-500 italic">Keine Setups gespeichert</p>
+                                )}
+                            </div>
+
+                            {/* Seeds List */}
+                            <div className="mt-4">
+                                <p className="text-sm font-semibold text-emerald-300 mb-2">
+                                    Seeds ({seeds.length})
+                                </p>
+                                {seeds.length > 0 ? (
+                                    <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
+                                        <span className="text-emerald-400">✓</span>
+                                        <span className="flex-1 truncate">SeedsDB (Synchronisiert)</span>
+                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
+                                            {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-500 italic">Keine Seeds gespeichert</p>
                                 )}
                             </div>
                         </div>
@@ -285,6 +452,107 @@ export const SettingsPage: React.FC = () => {
                         <button onClick={handleLogout} className="btn btn-secondary w-full justify-center text-red-400 hover:text-red-300">
                             {t.settings.logout}
                         </button>
+
+                        {/* Change Password Section */}
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mt-4">
+                            <h4 className="font-bold text-slate-300 mb-3 text-sm">Passwort ändern</h4>
+                            <div className="space-y-2">
+                                <input
+                                    type="password"
+                                    className="input w-full text-sm"
+                                    placeholder="Aktuelles Passwort"
+                                    value={currentPassword}
+                                    onChange={e => setCurrentPassword(e.target.value)}
+                                />
+                                <input
+                                    type="password"
+                                    className="input w-full text-sm"
+                                    placeholder="Neues Passwort"
+                                    value={newPassword}
+                                    onChange={e => setNewPassword(e.target.value)}
+                                />
+                                <input
+                                    type="password"
+                                    className="input w-full text-sm"
+                                    placeholder="Neues Passwort bestätigen"
+                                    value={confirmPassword}
+                                    onChange={e => setConfirmPassword(e.target.value)}
+                                />
+                                <button onClick={handleChangePassword} className="btn btn-secondary w-full text-sm">
+                                    Passwort ändern
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Admin Panel */}
+                        {role === 'admin' && (
+                            <div className="mt-6 border-t border-slate-700 pt-6">
+                                <button
+                                    onClick={() => setShowAdminPanel(!showAdminPanel)}
+                                    className="btn btn-danger w-full bg-red-900/20 text-red-400 border-red-900/50 hover:bg-red-900/40 mb-4"
+                                >
+                                    {showAdminPanel ? 'Admin Panel ausblenden' : 'Admin Panel anzeigen'}
+                                </button>
+
+                                {showAdminPanel && (
+                                    <div className="space-y-4">
+                                        <h3 className="text-xl font-bold text-red-400">Admin Benutzerverwaltung</h3>
+                                        <div className="space-y-2">
+                                            {adminUsers.map(user => (
+                                                <div key={user.id} className="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-700">
+                                                    <div>
+                                                        <span className="font-bold text-white block">{user.username}</span>
+                                                        <span className="text-xs text-slate-500">Rolle: {user.role} • ID: {user.id}</span>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        {/* Role Management */}
+                                                        {user.id !== 1 && user.id !== parseInt((localStorage.getItem('cgt_token') ? JSON.parse(atob(localStorage.getItem('cgt_token')!.split('.')[1])).id : 0)) && (
+                                                            <button
+                                                                onClick={() => handleToggleRole(user.id, user.role)}
+                                                                className={`p-2 rounded ${user.role === 'admin' ? 'text-yellow-400 hover:bg-yellow-900/20' : 'text-emerald-400 hover:bg-emerald-900/20'}`}
+                                                                title={user.role === 'admin' ? "Demote to User" : "Promote to Admin"}
+                                                            >
+                                                                {user.role === 'admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
+                                                            </button>
+                                                        )}
+
+                                                        {/* Password Reset */}
+                                                        {user.id !== 1 && (
+                                                            <button
+                                                                onClick={() => handleAdminResetPassword(user.id)}
+                                                                className="p-2 text-blue-400 hover:bg-blue-900/20 rounded"
+                                                                title="Reset Password"
+                                                            >
+                                                                <Key size={16} />
+                                                            </button>
+                                                        )}
+
+                                                        {/* Delete User */}
+                                                        {user.id !== 1 && user.id !== parseInt((localStorage.getItem('cgt_token') ? JSON.parse(atob(localStorage.getItem('cgt_token')!.split('.')[1])).id : 0)) && (
+                                                            <button
+                                                                onClick={() => handleDeleteUser(user.id)}
+                                                                className="p-2 text-red-400 hover:bg-red-900/20 rounded"
+                                                                title="Delete User"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
+
+                                                        {/* Root Admin Indicator */}
+                                                        {user.id === 1 && (
+                                                            <div className="p-2 text-yellow-500" title="Root Admin (Protected)">
+                                                                <Lock size={16} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {adminUsers.length === 0 && <p className="text-slate-500 italic">Keine Benutzer geladen.</p>}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="space-y-4">

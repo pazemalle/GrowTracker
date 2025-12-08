@@ -79,11 +79,37 @@ export interface StrainDistribution {
   count: number;
 }
 
+export interface GrowSetup {
+  id: string;
+  name: string;
+  tent: string; // e.g., "80x80x180"
+  lights: string; // e.g., "Sanlight EVO 4-80"
+  exhaust: string; // Abluft
+  filter: string; // AKF
+  circulation: string; // Umluft
+  notes: string;
+}
+
+export interface Seed {
+  id: string;
+  name: string;
+  breeder: string;
+  strainType: 'automatic' | 'photoperiodic' | 'feminized' | 'regular';
+  thc?: string; // e.g. "25%"
+  flowerTime?: string; // e.g. "8-9 Weeks"
+  taste?: string;
+  stock: number;
+  notes: string;
+  onWatchlist: boolean;
+}
+
 export interface Grow {
   id: string;
   name: string;
   startDate: string; // ISO Date
   profileId?: string;
+  setupIds?: string[]; // List of Linked GrowSetups
+  setupId?: string; // Legacy: Single Linked GrowSetup
   status: 'active' | 'archived';
   currentStage: Stage;
   logs: LogEntry[];
@@ -96,12 +122,20 @@ export interface Grow {
 export interface GrowContextType {
   grows: Grow[];
   profiles: Profile[];
+  setups: GrowSetup[]; // New
+  seeds: Seed[]; // New
   addGrow: (grow: Grow) => void;
   updateGrow: (grow: Grow) => void;
   deleteGrow: (id: string) => void;
   addProfile: (profile: Profile) => void;
   updateProfile: (profile: Profile) => void;
   deleteProfile: (id: string) => void;
-  importData: (data: { grows: Grow[]; profiles: Profile[] }) => void;
+  addSetup: (setup: GrowSetup) => void;
+  updateSetup: (setup: GrowSetup) => void;
+  deleteSetup: (id: string) => void;
+  addSeed: (seed: Seed) => void;
+  updateSeed: (seed: Seed) => void;
+  deleteSeed: (id: string) => void;
+  importData: (data: { grows: Grow[]; profiles: Profile[]; setups?: GrowSetup[]; seeds?: Seed[] }) => void;
   clearData: () => void;
 }

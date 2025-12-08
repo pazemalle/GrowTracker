@@ -18,6 +18,7 @@ initDb();
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/data', dataRoutes);
+app.use('/api/admin', require('./admin'));
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

@@ -51,7 +51,7 @@ const StageEditor: React.FC<StageEditorProps> = ({ stage, config, availableNutri
             nutrientId: nutrient.id,
             name: nutrient.name,
             amount: parseFloat(newNutrientAmount),
-            unit: 'ml/L' // Default, could be selectable
+            unit: 'ml/L Wasser' // Default, could be selectable
         };
 
         onChange({ ...config, nutrients: [...config.nutrients, entry] });
@@ -421,7 +421,7 @@ export const Profiles: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-3xl font-bold gradient-text">{t.profiles.title}</h2>

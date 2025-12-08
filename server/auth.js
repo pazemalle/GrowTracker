@@ -17,22 +17,29 @@ router.post('/register', async (req, res) => {
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        db.run(`INSERT INTO users (username, password_hash) VALUES (?, ?)`,
-            [username, hashedPassword],
-            function (err) {
-                if (err) {
-                    if (err.message.includes('UNIQUE constraint failed')) {
-                        return res.status(409).json({ error: 'Username already exists' });
+        // Check if this is the FIRST user ever
+        db.get("SELECT COUNT(*) as count FROM users", [], (err, row) => {
+            if (err) return res.status(500).json({ error: 'Database error' });
+
+            const role = row.count === 0 ? 'admin' : 'user';
+
+            db.run(`INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)`,
+                [username, hashedPassword, role],
+                function (err) {
+                    if (err) {
+                        if (err.message.includes('UNIQUE constraint failed')) {
+                            return res.status(409).json({ error: 'Username already exists' });
+                        }
+                        return res.status(500).json({ error: err.message });
                     }
-                    return res.status(500).json({ error: err.message });
+
+                    // Initialize empty data for new user
+                    db.run(`INSERT INTO user_data (user_id) VALUES (?)`, [this.lastID]);
+
+                    res.status(201).json({ id: this.lastID, username, role });
                 }
-
-                // Initialize empty data for new user
-                db.run(`INSERT INTO user_data (user_id) VALUES (?)`, [this.lastID]);
-
-                res.status(201).json({ id: this.lastID, username });
-            }
-        );
+            );
+        });
     } catch (e) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -49,8 +56,47 @@ router.post('/login', (req, res) => {
         const match = await bcrypt.compare(password, user.password_hash);
         if (!match) return res.status(401).json({ error: 'Invalid credentials' });
 
-        const token = jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: '7d' });
-        res.json({ token, username: user.username });
+        // Include role in token
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role || 'user' }, SECRET_KEY, { expiresIn: '7d' });
+        res.json({ token, username: user.username, role: user.role || 'user' });
+    });
+});
+
+// Middleware to verify token
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
+
+// Change Password
+router.post('/change-password', authenticateToken, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Current and new password required' });
+    }
+
+    db.get("SELECT password_hash FROM users WHERE id = ?", [userId], async (err, user) => {
+        if (err || !user) return res.status(500).json({ error: 'User not found' });
+
+        const match = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!match) return res.status(401).json({ error: 'Incorrect current password' });
+
+        const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+        db.run("UPDATE users SET password_hash = ? WHERE id = ?", [newHashedPassword, userId], (err) => {
+            if (err) return res.status(500).json({ error: 'Error updating password' });
+            res.json({ message: 'Password updated successfully' });
+        });
     });
 });
 
