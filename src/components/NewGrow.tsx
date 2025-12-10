@@ -8,7 +8,7 @@ import { Sprout, Calendar, ArrowRight, Hexagon } from 'lucide-react';
 
 export const NewGrow: React.FC = () => {
     const navigate = useNavigate();
-    const { profiles, addGrow, setups = [] } = useStore();
+    const { profiles, addGrow, setups = [], seeds = [] } = useStore();
     const { t } = useLanguage();
 
     const [name, setName] = useState('');
@@ -136,6 +136,30 @@ export const NewGrow: React.FC = () => {
                 {/* Strains & Plant Count Section */}
                 <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700 space-y-4">
                     <label className="block text-sm font-bold text-slate-300">{t.newGrow.plantCount} & {t.newGrow.strains}</label>
+
+                    {/* Seed Selector */}
+                    {seeds.length > 0 && (
+                        <div className="mb-2">
+                            <select
+                                className="input text-xs w-full py-1"
+                                onChange={(e) => {
+                                    if (e.target.value) {
+                                        setNewStrainName(e.target.value);
+                                        // Reset select to default/empty so user can pick again if needed, 
+                                        // but standard pattern is usually just setting the input. 
+                                        // Controlled component for select might be tricky if we want it to reset.
+                                        // Let's just set the name.
+                                        e.target.value = "";
+                                    }
+                                }}
+                            >
+                                <option value="">-- {t.seedBank?.title ? (t.seedBank as any).selectFromStash || 'Aus Samenbestand wählen' : 'Aus Samenbestand wählen'} --</option>
+                                {seeds.filter(s => s.stock > 0).map(s => (
+                                    <option key={s.id} value={s.name}>{s.name} ({s.breeder}) - {s.stock}x</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     {/* Add Strain Input */}
                     <div className="flex gap-2">

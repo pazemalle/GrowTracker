@@ -2,7 +2,7 @@ import React from 'react';
 import { useStore } from '../context/StoreContext';
 import { Link } from 'react-router-dom';
 import { Sprout, Calendar, Archive, PlusCircle, Download, Upload, Hexagon } from 'lucide-react';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, addDays } from 'date-fns';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -112,27 +112,27 @@ export const Dashboard: React.FC = () => {
                         </Link>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="flex flex-col space-y-8">
                         {activeGrows.map(grow => {
-                            // Calculate days based on LAST LOG ENTRY if available, otherwise current date
+                            // Calculate active days/stage
                             const lastLog = grow.logs.length > 0
                                 ? grow.logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
                                 : null;
-
                             const endDate = lastLog ? new Date(lastLog.date) : new Date();
-                            // If lastLog has a manual day override, use it. Otherwise calculate diff.
-                            const days = lastLog?.day
-                                ? lastLog.day
-                                : differenceInDays(endDate, new Date(grow.startDate)) + 1;
-
+                            const days = lastLog?.day ? lastLog.day : differenceInDays(endDate, new Date(grow.startDate)) + 1;
                             const weeks = Math.ceil(days / 7);
+
+                            // Get Profile
+                            const profile = grow.profileId ? profiles.find(p => p.id === grow.profileId) : null;
+
+
 
                             return (
                                 <Link key={grow.id} to={`/grow/${grow.id}`} className="glass-panel p-6 grow-card block !no-underline" style={{ textDecoration: 'none' }}>
                                     <div className="grow-card-header">
                                         <div className="flex flex-col w-full">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <h3 className="grow-card-title !no-underline mr-1">{grow.name}</h3>
+                                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                                                <h3 className="text-xl font-bold text-white mr-2">{grow.name}</h3>
                                                 <span className="text-xs opacity-60" title={isAuthenticated ? 'Auf Server gespeichert' : 'Nur lokal gespeichert'}>{isAuthenticated ? '☁️' : '💾'}</span>
 
                                                 {/* Linked Setups */}
@@ -150,7 +150,15 @@ export const Dashboard: React.FC = () => {
                                                                         key={s.id}
                                                                         onClick={(e) => handleSetupClick(e, s.id)}
                                                                         className="flex items-center gap-1 text-[10px] font-bold text-slate-300 bg-slate-700/50 hover:bg-slate-700 px-1.5 py-0.5 rounded border border-slate-600 cursor-pointer transition-colors"
-                                                                        title={s.tent ? `${s.name} (${s.tent})` : s.name}
+                                                                        title={[
+                                                                            `${t.setupManager.setupName}: ${s.name}`,
+                                                                            s.tent ? `${t.setupManager.tent}: ${s.tent}` : null,
+                                                                            s.lights ? `${t.setupManager.lights}: ${s.lights}` : null,
+                                                                            s.exhaust ? `${t.setupManager.exhaust}: ${s.exhaust}` : null,
+                                                                            s.filter ? `${t.setupManager.filter}: ${s.filter}` : null,
+                                                                            s.circulation ? `${t.setupManager.circulation}: ${s.circulation}` : null,
+                                                                            s.notes ? `${t.setupManager.notes}: ${s.notes}` : null
+                                                                        ].filter(Boolean).join('\n')}
                                                                     >
                                                                         <Hexagon size={10} className="text-emerald-500" />
                                                                         {s.name}
@@ -162,11 +170,59 @@ export const Dashboard: React.FC = () => {
                                                     return null;
                                                 })()}
                                             </div>
+
+                                            {/* Stats Row (Horizontal & Compact) */}
+                                            <div className="flex flex-wrap gap-2 mt-2 mb-2">
+                                                {/* Flower Stats */}
+                                                {(() => {
+                                                    const flowerLog = grow.logs
+                                                        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                                                        .find(log => log.stage === 'flowering');
+
+                                                    if (flowerLog) {
+                                                        const endDate = lastLog ? new Date(lastLog.date) : new Date();
+                                                        const flowerDays = differenceInDays(endDate, new Date(flowerLog.date)) + 1;
+                                                        const flowerWeeks = Math.ceil(flowerDays / 7);
+
+                                                        if (flowerDays > 0) {
+                                                            return (
+                                                                <>
+                                                                    <div className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                                                        <span>🌺 {flowerDays} {t.growDetail?.flowerDays || 'BT'}</span>
+                                                                    </div>
+                                                                    <div className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                                                        <span>📅 {flowerWeeks} {t.growDetail?.flowerWeeks || 'BW'}</span>
+                                                                    </div>
+                                                                </>
+                                                            );
+                                                        }
+                                                    }
+                                                    return null;
+                                                })()}
+
+                                                <div className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                                    <span>⏱️ {days} {t.dashboard.totalDays}</span>
+                                                </div>
+                                                <div className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                                    <span>📆 {weeks} {t.growDetail.weeks}</span>
+                                                </div>
+                                                <div className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                                                    <span>📝 {grow.logs.length} Logs</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Date & Stage (Secondary Info) */}
+                                            <div className="flex items-center gap-3 text-[10px] text-slate-500 mb-3 ml-1">
+                                                <div className="flex items-center gap-1">
+                                                    <Calendar size={10} />
+                                                    <span>{format(new Date(grow.startDate), 'dd.MM.yyyy')}</span>
+                                                </div>
+                                                <div className="text-slate-400">
+                                                    {t.profiles.stages[lastLog ? lastLog.stage : grow.currentStage] || (lastLog ? lastLog.stage : grow.currentStage)}
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-2 self-start">
-                                            <span className="grow-card-badge">
-                                                {t.profiles.stages[lastLog ? lastLog.stage : grow.currentStage] || (lastLog ? lastLog.stage : grow.currentStage)}
-                                            </span>
                                             <button
                                                 onClick={(e) => handleExportGrow(e, grow)}
                                                 className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
@@ -177,83 +233,94 @@ export const Dashboard: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="grow-card-date mt-2">
-                                        <Calendar size={14} />
-                                        <span>{t.dashboard.started} {format(new Date(grow.startDate), 'MMM do, yyyy')}</span>
-                                    </div>
-
-                                    {/* Plant & Strain Info */}
-                                    <div className="mt-3">
-                                        {grow.strainDistribution && grow.strainDistribution.length > 0 ? (
-                                            <div className="space-y-1">
-                                                {grow.strainDistribution.map(s => (
-                                                    <div key={s.id} className="text-xs text-slate-300 flex items-center gap-1.5 bg-slate-800/50 px-2 py-1 rounded border border-slate-700/50">
-                                                        <span className="text-emerald-400 font-bold">{s.count}x</span>
-                                                        <span>{s.name}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            (grow.plantCount || (grow.strains && grow.strains.length > 0)) && (
-                                                <div className="text-xs text-slate-400 flex flex-wrap gap-2">
-                                                    {grow.plantCount && (
-                                                        <span className="bg-slate-800 px-2 py-1 rounded border border-slate-700">
-                                                            🌱 {grow.plantCount} {t.newGrow.plantCount || 'Plants'}
-                                                        </span>
-                                                    )}
-                                                    {grow.strains && grow.strains.length > 0 && (
-                                                        <span className="bg-slate-800 px-2 py-1 rounded border border-slate-700" title={grow.strains.join(', ')}>
-                                                            🧬 {grow.strains.length} {t.newGrow.strains || 'Strains'}
-                                                        </span>
-                                                    )}
+                                    {/* Plant & Strain Info (Compact Line) */}
+                                    {(grow.plantCount || (grow.strains && grow.strains.length > 0)) && (
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {grow.strainDistribution?.map(s => (
+                                                <div key={s.id} className="text-[10px] text-slate-400 flex items-center gap-1 bg-slate-800/40 px-2 py-0.5 rounded-md border border-slate-700/40">
+                                                    <span className="text-emerald-500 font-bold">{s.count}x</span>
+                                                    <span>{s.name}</span>
                                                 </div>
-                                            )
-                                        )}
-                                    </div>
+                                            ))}
+                                        </div>
+                                    )}
 
-                                    <div className="grow-stats-grid">
-                                        {/* Flower Stats Calculation & Display */}
-                                        {(() => {
-                                            const flowerLog = grow.logs
-                                                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                                                .find(log => log.stage === 'flowering');
+                                    {/* Upcoming Events (Timeline Style) */}
+                                    {(() => {
+                                        let events: { day?: number, date?: Date, task: string, type?: string }[] = [];
 
-                                            if (flowerLog) {
-                                                const endDate = lastLog ? new Date(lastLog.date) : new Date();
-                                                const flowerDays = differenceInDays(endDate, new Date(flowerLog.date)) + 1;
-                                                const flowerWeeks = Math.ceil(flowerDays / 7);
-
-                                                if (flowerDays > 0) {
-                                                    return (
-                                                        <>
-                                                            <div className="grow-stat-box border-pink-500/30 bg-pink-900/10">
-                                                                <span className="grow-stat-value text-pink-400">{flowerDays}</span>
-                                                                <span className="grow-stat-label text-pink-300/70">{t.growDetail?.flowerDays || 'Blütetage'}</span>
-                                                            </div>
-                                                            <div className="grow-stat-box border-pink-500/30 bg-pink-900/10">
-                                                                <span className="grow-stat-value text-pink-400">{flowerWeeks}</span>
-                                                                <span className="grow-stat-label text-pink-300/70">{t.growDetail?.flowerWeeks || 'Blütewochen'}</span>
-                                                            </div>
-                                                        </>
-                                                    );
-                                                }
+                                        // 1. Profile Schedule Tasks
+                                        if (profile) {
+                                            const currentStage = lastLog ? lastLog.stage : grow.currentStage;
+                                            const stageConfig = profile.stages[currentStage];
+                                            if (stageConfig && stageConfig.schedule) {
+                                                const currentStageDay = lastLog?.stageDay || 1;
+                                                const scheduleEvents = stageConfig.schedule
+                                                    .filter(t => t.day >= currentStageDay && t.day <= currentStageDay + 14)
+                                                    .map(t => ({ day: t.day, task: t.task, type: 'task' }));
+                                                events = [...events, ...scheduleEvents];
                                             }
-                                            return null;
-                                        })()}
 
-                                        <div className="grow-stat-box">
-                                            <span className="grow-stat-value text-emerald-400">{days}</span>
-                                            <span className="grow-stat-label">{t.dashboard.totalDays}</span>
-                                        </div>
-                                        <div className="grow-stat-box">
-                                            <span className="grow-stat-value text-blue-400">{weeks}</span>
-                                            <span className="grow-stat-label">{t.growDetail.weeks}</span>
-                                        </div>
-                                        <div className="grow-stat-box">
-                                            <span className="grow-stat-value text-purple-400">{grow.logs.length}</span>
-                                            <span className="grow-stat-label">{t.dashboard.logEntries}</span>
-                                        </div>
-                                    </div>
+                                            // 2. Major Events (Switch, Harvest)
+                                            // Simplification: Assume startDate is start of veg. 
+                                            // For more accuracy we'd need to track stage changes in logs, but this mimics GrowDetail basic logic.
+                                            const referenceDate = lastLog ? new Date(lastLog.date) : new Date();
+
+                                            // Switch to Flower
+                                            const vegiDays = profile.vegiDurationWeeks * 7;
+                                            const switchDate = addDays(new Date(grow.startDate), vegiDays);
+                                            const switchDiff = differenceInDays(switchDate, referenceDate);
+
+                                            // Always add if within window, regardless of current stage (fixes manual stage override issue)
+                                            if (switchDiff >= 0 && switchDiff <= 14) {
+                                                events.push({
+                                                    date: switchDate,
+                                                    task: t.growDetail.predictions?.switchToFlower || 'Auf Blüte umstellen (12/12)',
+                                                    type: 'major'
+                                                });
+                                            }
+
+                                            // Harvest
+                                            const flowerDays = profile.flowerDurationWeeks * 7;
+                                            const harvestDate = addDays(switchDate, flowerDays);
+                                            const harvestDiff = differenceInDays(harvestDate, referenceDate);
+
+                                            if (harvestDiff >= 0 && harvestDiff <= 14) {
+                                                events.push({
+                                                    date: harvestDate,
+                                                    task: t.growDetail.predictions?.estimatedHarvest || 'Erntefenster beginnt',
+                                                    type: 'major'
+                                                });
+                                            }
+                                        }
+
+                                        // Sort all events by date/day
+
+                                        if (events.length === 0) return null;
+
+                                        return (
+                                            <div className="mt-5 pt-4 border-t border-slate-700/50">
+                                                <h4 className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
+                                                    <Calendar size={10} />
+                                                    {t.dashboard?.upcomingEvents || 'Anstehende Ereignisse (2 Wochen)'}
+                                                </h4>
+                                                <div className="space-y-1">
+                                                    {events.map((event, idx) => (
+                                                        <div key={idx} className="flex items-center gap-3 text-xs group">
+                                                            <span className="text-emerald-500 font-mono text-[10px] min-w-[60px] bg-emerald-900/10 px-1 rounded border border-emerald-500/10 text-center uppercase">
+                                                                {event.date
+                                                                    ? format(event.date, 'dd. MMM')
+                                                                    : `Tag ${event.day}`}
+                                                            </span>
+                                                            <span className={`text-slate-300 group-hover:text-emerald-300 transition-colors truncate ${event.type === 'major' ? 'font-bold text-emerald-400' : ''}`}>
+                                                                {event.task}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </Link>
                             );
                         })}
@@ -262,29 +329,31 @@ export const Dashboard: React.FC = () => {
             </div>
 
             {/* Archived Grows (Collapsed/Simple View) */}
-            {archivedGrows.length > 0 && (
-                <div className="space-y-4 pt-8 border-t border-slate-800">
-                    <h2 className="text-xl font-bold text-slate-400 flex items-center gap-2">
-                        <Archive size={20} />
-                        {t.dashboard.archive}
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {archivedGrows.map(grow => (
-                            <Link key={grow.id} to={`/grow/${grow.id}`} className="glass-panel p-4 hover:bg-slate-800/50 transition-colors block">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h3 className="font-bold text-slate-300">{grow.name}</h3>
-                                    <span className="text-xs px-2 py-1 rounded bg-slate-700 text-slate-400">
-                                        {t.dashboard.archived}
-                                    </span>
-                                </div>
-                                <p className="text-sm text-slate-500">
-                                    {format(new Date(grow.startDate), 'MMM yyyy')} • {grow.logs.length} Logs
-                                </p>
-                            </Link>
-                        ))}
+            {
+                archivedGrows.length > 0 && (
+                    <div className="space-y-4 pt-8 border-t border-slate-800">
+                        <h2 className="text-xl font-bold text-slate-400 flex items-center gap-2">
+                            <Archive size={20} />
+                            {t.dashboard.archive}
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {archivedGrows.map(grow => (
+                                <Link key={grow.id} to={`/grow/${grow.id}`} className="glass-panel p-4 hover:bg-slate-800/50 transition-colors block">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="font-bold text-slate-300">{grow.name}</h3>
+                                        <span className="text-xs px-2 py-1 rounded bg-slate-700 text-slate-400">
+                                            {t.dashboard.archived}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-slate-500">
+                                        {format(new Date(grow.startDate), 'MMM yyyy')} • {grow.logs.length} Logs
+                                    </p>
+                                </Link>
+                            ))}
+                        </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </div>
     );
 };

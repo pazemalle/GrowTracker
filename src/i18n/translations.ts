@@ -74,6 +74,7 @@ export const translations = {
             logEntries: 'Log-Einträge',
             started: 'Gestartet',
             archived: 'Archiviert',
+            upcomingEvents: 'Anstehende Ereignisse (2 Wochen)',
         },
 
         // Profiles
@@ -101,6 +102,7 @@ export const translations = {
             noProfiles: 'Noch keine Profile erstellt.',
             createFirst: 'Erstelle dein erstes Profil',
             deleteConfirm: 'Bist du sicher, dass du dieses Profil löschen möchtest?',
+            loadFromProfile: 'Aus Profil laden',
 
             // Stages
             stages: {
@@ -331,6 +333,7 @@ export const translations = {
             logEntries: 'Log Entries',
             started: 'Started',
             archived: 'Archived',
+            upcomingEvents: 'Upcoming Events (2 Weeks)',
         },
 
         // Profiles
@@ -358,6 +361,7 @@ export const translations = {
             noProfiles: 'No profiles created yet.',
             createFirst: 'Create your first profile',
             deleteConfirm: 'Are you sure you want to delete this profile?',
+            loadFromProfile: 'Load from Profile',
 
             // Stages
             stages: {

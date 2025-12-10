@@ -8,7 +8,7 @@ import { format, addDays, differenceInDays } from 'date-fns';
 import {
     Calendar, Camera, Save, Share2,
     Download, Trash2, Edit2, X, Droplets, Thermometer, Sun, Beaker, Plus, Wind,
-    AlertCircle, ArrowUpDown, Hexagon
+    AlertCircle, ArrowUpDown, Hexagon, ChevronDown
 } from 'lucide-react';
 
 const calculateVPD = (temp: number, humidity: number): string => {
@@ -41,7 +41,7 @@ export const GrowDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     // const { isAuthenticated } = useAuth(); // Unused
-    const { grows, profiles, setups, updateGrow, deleteGrow } = useStore();
+    const { grows, profiles, setups, seeds = [], updateGrow, deleteGrow } = useStore();
     const { t } = useLanguage();
 
     const grow = grows.find(g => g.id === id);
@@ -172,14 +172,36 @@ export const GrowDetail: React.FC = () => {
     }, [editLogTemp, editLogHumidity]);
 
     // Auto-fill Nutrients from Profile when Stage changes (New Log)
-    useEffect(() => {
-        if (profile && newLogStage && newLogNutrients.length === 0) {
-            const stageConfig = profile.stages?.[newLogStage];
-            if (stageConfig?.nutrients?.length > 0) {
-                setNewLogNutrients(stageConfig.nutrients);
-            }
+    // Auto-fill removed in favor of manual load buttons
+    // useEffect(() => {
+    //     if (profile && newLogStage && newLogNutrients.length === 0) {
+    //         const stageConfig = profile.stages?.[newLogStage];
+    //         if (stageConfig?.nutrients?.length > 0) {
+    //             setNewLogNutrients(stageConfig.nutrients);
+    //         }
+    //     }
+    // }, [newLogStage, profile]); 
+
+    const loadProfileEnvironment = () => {
+        if (!profile || !newLogStage) return;
+        const stageConfig = profile.stages?.[newLogStage];
+        if (!stageConfig) return;
+
+        if (stageConfig.temp) setNewLogTemp(stageConfig.temp);
+        if (stageConfig.humidity) setNewLogHumidity(stageConfig.humidity);
+        if (stageConfig.vpd) setNewLogVpd(stageConfig.vpd);
+        if (stageConfig.dli) setNewLogDli(stageConfig.dli);
+        if (stageConfig.ppfd) setNewLogPpfd(stageConfig.ppfd);
+        if (stageConfig.lightCycle) setNewLogLightCycle(stageConfig.lightCycle);
+    };
+
+    const loadProfileNutrients = () => {
+        if (!profile || !newLogStage) return;
+        const stageConfig = profile.stages?.[newLogStage];
+        if (stageConfig?.nutrients?.length > 0) {
+            setNewLogNutrients(stageConfig.nutrients);
         }
-    }, [newLogStage, profile]); // Only run when stage changes or profile loads
+    };
 
     // Auto-select Stage from Last Log
 
@@ -667,9 +689,44 @@ export const GrowDetail: React.FC = () => {
     };
 
     const handleExportForum = (log: LogEntry) => {
-        const bbcode = `[b]${log.title}[/b] - ${t.growDetail.day} ${log.day || log.stageDay}
-${log.content}
-${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).join('\n')}`;
+        const dateStr = format(new Date(log.date), 'dd.MM.yyyy');
+        let bbcode = `[b]${dateStr} - ${log.title}[/b]\n\n`;
+
+        // Environment Block
+        const envParts = [];
+        if (log.environment?.temp) envParts.push(`${log.environment.temp}°C`);
+        if (log.environment?.humidity) envParts.push(`${log.environment.humidity}% RLF`);
+        if (log.environment?.vpd) envParts.push(`VPD: ${log.environment.vpd} kPa`);
+        if (log.environment?.dli) envParts.push(`DLI: ${log.environment.dli}`);
+        if (log.environment?.ppfd) envParts.push(`PPFD: ${log.environment.ppfd}`);
+        if (log.environment?.lightCycle) envParts.push(`Licht: ${log.environment.lightCycle}`);
+
+        if (envParts.length > 0) {
+            bbcode += `[b]${t.growDetail.environment}:[/b] ${envParts.join(', ')}\n`;
+        }
+
+        // Water & Nutrients Block
+        const nutriParts = [];
+        if (log.water) nutriParts.push(`Wasser: ${log.water}L`);
+        if (log.nutrients && log.nutrients.length > 0) {
+            const nutrientsStr = log.nutrients.map(n => `${n.name} (${n.amount} ${n.unit})`).join(', ');
+            nutriParts.push(`Dünger: ${nutrientsStr}`);
+        }
+
+        if (nutriParts.length > 0) {
+            bbcode += `[b]Wasser & Nährstoffe:[/b] ${nutriParts.join(' - ')}\n`;
+        }
+
+        // Content
+        if (log.content) {
+            bbcode += `\n${log.content}\n`;
+        }
+
+        // Images
+        if (log.images && log.images.length > 0) {
+            bbcode += `\n[i]${log.images.length} Bild(er) angehängt (Upload im Forum erforderlich)[/i]`;
+        }
+
         navigator.clipboard.writeText(bbcode);
         alert(t.growDetail.bbcodeCopied);
     };
@@ -694,7 +751,7 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
     const stages: Stage[] = ['seedling', 'vegetation', 'flowering', 'drying', 'curing'];
 
     // Render Helper for Log Form (Shared between New and Edit)
-    const renderLogForm = (isEdit: boolean) => {
+    const renderLogFormUpdated = (isEdit: boolean) => {
         const title = isEdit ? editLogTitle : newLogTitle;
         const setTitle = isEdit ? setEditLogTitle : setNewLogTitle;
         const setIsManual = isEdit ? setIsEditLogTitleManual : setIsNewLogTitleManual;
@@ -732,24 +789,13 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
 
         return (
             <div className="space-y-2">
-                {/* Header Row: Date | Title | Day | Stage */}
-                <div className="flex flex-col md:flex-row gap-2">
-                    <div className="flex gap-2 w-full md:w-auto">
-                        <div className="w-32">
-                            {/* <label className="text-[10px] text-slate-500 block mb-0.5">{t.growDetail.date}</label> */}
-                            <input
-                                type="date"
-                                className="input w-full text-sm py-1"
-                                value={date}
-                                onChange={e => setDate(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex-1 order-last md:order-none">
-                        {/* <label className="text-[10px] text-slate-500 block mb-0.5">{t.growDetail.title}</label> */}
+                {/* Header Section: Compact Card */}
+                <div className="bg-slate-800/50 p-2 rounded-lg space-y-2 border border-slate-700">
+                    {/* Title (Full Width) */}
+                    <div>
+                        <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail.title}</label>
                         <input
-                            className="input font-bold w-full text-sm py-1"
+                            className="input font-bold w-full p-1.5 text-sm h-8 bg-slate-900 border-slate-700"
                             style={{
                                 borderColor: showValidation && !title ? '#ef4444' : undefined,
                                 boxShadow: showValidation && !title ? '0 0 0 1px #ef4444' : undefined
@@ -764,40 +810,70 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                         />
                     </div>
 
-                    <div className="flex gap-2 w-full md:w-auto">
-                        <div className="w-20">
-                            {/* <label className="text-[10px] text-slate-500 block mb-0.5">{t.growDetail.manualDay}</label> */}
+                    {/* Grid: Date, Day, Stage */}
+                    <div className="grid grid-cols-3 gap-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                        {/* Date */}
+                        <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail.date}</label>
                             <input
-                                type="number"
-                                className="input w-full text-sm py-1"
-                                placeholder={t.growDetail.manualDay}
-                                value={day}
-                                onChange={e => setDay(parseInt(e.target.value))}
-                                title={t.growDetail.manualDay}
+                                type="date"
+                                className="input w-full p-1.5 text-sm h-8 bg-slate-900 border-slate-700"
+                                value={date}
+                                onChange={e => setDate(e.target.value)}
                             />
                         </div>
 
-                        <div className="flex-1 md:w-40">
-                            {/* <label className="text-[10px] text-slate-500 block mb-0.5">{t.growDetail.stage}</label> */}
-                            <select
-                                className="input w-full text-sm py-1"
-                                value={stage}
-                                onChange={e => setStage(e.target.value as Stage)}
-                            >
-                                {stages.map(s => (
-                                    <option key={s} value={s}>{t.profiles.stages[s] || s}</option>
-                                ))}
-                            </select>
+                        {/* Day */}
+                        <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail.day}</label>
+                            <input
+                                type="number"
+                                className="input w-full p-1.5 text-sm h-8 bg-slate-900 border-slate-700"
+                                placeholder={t.growDetail.manualDay}
+                                value={day}
+                                onChange={e => setDay(parseInt(e.target.value))}
+                            />
+                        </div>
+
+                        {/* Stage */}
+                        <div>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail.stage}</label>
+                            <div className="relative">
+                                <select
+                                    className="input w-full p-1.5 text-sm h-8 bg-slate-900 border-slate-700 appearance-none"
+                                    value={stage}
+                                    onChange={e => setStage(e.target.value as Stage)}
+                                >
+                                    {stages.map(s => (
+                                        <option key={s} value={s}>
+                                            {t.profiles.stages[s] || s}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown className="absolute right-2 top-2 text-slate-400 pointer-events-none" size={14} />
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Environment & Water - Compact */}
                 <div className="bg-slate-800/50 p-2 rounded-lg space-y-2 border border-slate-700">
-                    <h4 className="font-bold text-emerald-400 flex items-center gap-2 text-xs">
-                        <Thermometer size={14} /> {t.growDetail.environment}
-                    </h4>
-                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
+                    <div className="flex items-center gap-3 mb-1">
+                        <h4 className="font-bold text-emerald-400 flex items-center gap-2 text-xs">
+                            <Thermometer size={14} /> {t.growDetail.environment}
+                        </h4>
+                        {profile && (
+                            <button
+                                onClick={loadProfileEnvironment}
+                                className="text-xs text-white/70 hover:text-white hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 transition-colors"
+                                title="Load from Profile"
+                                style={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none', color: 'rgba(255,255,255,0.7)' }}
+                            >
+                                <Download size={12} /> <span className="text-[10px]">{t.profiles?.loadFromProfile || 'Load'}</span>
+                            </button>
+                        )}
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                         {/* Water input moved to Nutrients section */}
                         <div>
                             <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.temp}>{t.growDetail.temp}</label>
@@ -842,12 +918,26 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                 {/* Nutrients & Water - Compact */}
                 <div className="bg-slate-800/50 p-2 rounded-lg space-y-2 border border-slate-700">
                     <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-purple-400 flex items-center gap-2 text-xs">
-                            <Beaker size={14} /> {t.growDetail.nutrients}
-                        </h4>
-                        <button onClick={() => setIsAddingCustomNutrient(!isAddingCustomNutrient)} className="text-xs text-emerald-400 hover:underline">
-                            + {t.growDetail.customNutrient}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <h4 className="font-bold text-purple-400 flex items-center gap-2 text-xs">
+                                <Beaker size={14} /> {t.growDetail.nutrients}
+                            </h4>
+                            {profile && (
+                                <button
+                                    onClick={loadProfileNutrients}
+                                    className="text-xs text-white/70 hover:text-white hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 transition-colors"
+                                    title="Load from Profile"
+                                    style={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none', color: 'rgba(255,255,255,0.7)' }}
+                                >
+                                    <Download size={12} /> <span className="text-[10px]">{t.profiles?.loadFromProfile || 'Load'}</span>
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setIsAddingCustomNutrient(!isAddingCustomNutrient)} className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 text-xs font-bold transition-colors hover:underline p-0 cursor-pointer" style={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
+                                <Plus size={14} /> {t.growDetail.customNutrient}
+                            </button>
+                        </div>
                     </div>
 
                     {isAddingCustomNutrient && (
@@ -923,7 +1013,7 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                         <option value="g/L">g/L</option>
                                         <option value="g/L Substrat">g/L Sub</option>
                                     </select>
-                                    <button onClick={() => removeNutrientFromLog(idx, isEdit)} className="text-red-400 hover:text-red-300 ml-auto p-1">
+                                    <button onClick={() => removeNutrientFromLog(idx, isEdit)} className="p-1.5 text-slate-500 hover:text-red-400 transition-colors ml-auto opacity-70 hover:opacity-100 cursor-pointer" style={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
                                         <Trash2 size={16} />
                                     </button>
                                 </div>
@@ -1013,6 +1103,25 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                 <label className="text-sm font-bold text-slate-400 block">{t.newGrow.plantCount} & {t.newGrow.strains}</label>
 
                                 {/* Add New Strain */}
+                                {seeds.length > 0 && (
+                                    <div className="mb-2">
+                                        <select
+                                            className="input text-xs w-full py-1"
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    setNewStrainName(e.target.value);
+                                                    e.target.value = "";
+                                                }
+                                            }}
+                                        >
+                                            <option value="">-- {t.seedBank?.title ? (t.seedBank as any).selectFromStash || 'Aus Samenbestand wählen' : 'Aus Samenbestand wählen'} --</option>
+                                            {seeds.filter(s => s.stock > 0).map(s => (
+                                                <option key={s.id} value={s.name}>{s.name} ({s.breeder}) - {s.stock}x</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
                                 <div className="flex gap-2">
                                     <input
                                         className="input text-sm flex-1"
@@ -1081,43 +1190,54 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                 {profile && <span className="text-emerald-500">• {profile.name}</span>}
                             </p>
 
-                            {/* Linked Setups */}
-                            {linkedSetups.length > 0 && (
-                                <div className="flex flex-wrap gap-2 mb-3">
+                            {/* Combined Info: Setups & Strains */}
+                            {(linkedSetups.length > 0 || (grow.strainDistribution && grow.strainDistribution.length > 0) || grow.plantCount) && (
+                                <div className="flex flex-wrap gap-2 mb-3 items-center">
+                                    {/* Setups - Name Only, Details on Hover */}
                                     {linkedSetups.map(s => (
-                                        <span key={s.id} className="text-xs font-bold px-2 py-0.5 rounded border border-slate-600 bg-slate-800 text-slate-300 flex items-center gap-1">
-                                            <Hexagon size={10} className="text-emerald-500" />
-                                            {s.name}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Plant & Strain Info */}
-                            {grow.strainDistribution && grow.strainDistribution.length > 0 ? (
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                    {grow.strainDistribution.map(s => (
-                                        <div key={s.id} className="text-sm text-slate-300 flex items-center gap-1.5 bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700/50">
-                                            <span className="text-emerald-400 font-bold">{s.count}x</span>
-                                            <span>{s.name}</span>
+                                        <div
+                                            key={s.id}
+                                            className="text-sm text-slate-300 flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded border border-slate-600/50 cursor-help transition-colors hover:bg-slate-700"
+                                            title={[
+                                                `${t.setupManager.setupName}: ${s.name}`,
+                                                s.tent ? `${t.setupManager.tent}: ${s.tent}` : null,
+                                                s.lights ? `${t.setupManager.lights}: ${s.lights}` : null,
+                                                s.exhaust ? `${t.setupManager.exhaust}: ${s.exhaust}` : null,
+                                                s.filter ? `${t.setupManager.filter}: ${s.filter}` : null,
+                                                s.circulation ? `${t.setupManager.circulation}: ${s.circulation}` : null,
+                                                s.notes ? `${t.setupManager.notes}: ${s.notes}` : null
+                                            ].filter(Boolean).join('\n')}
+                                        >
+                                            <Hexagon size={12} className="text-emerald-500" />
+                                            <span className="font-medium text-xs">{s.name}</span>
                                         </div>
                                     ))}
+
+                                    {/* Strains - Consolidated into one field */}
+                                    {grow.strainDistribution && grow.strainDistribution.length > 0 ? (
+                                        <div className="text-sm text-slate-300 flex items-center gap-1.5 bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700/50">
+                                            {/* <span className="text-emerald-400 font-bold text-xs">🧬</span> */}
+                                            <span className="font-medium text-xs">
+                                                {grow.strainDistribution.map(s => `${s.count}x ${s.name}`).join(', ')}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {grow.plantCount && (
+                                                <div className="text-sm text-slate-300 flex items-center gap-1.5 bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700/50">
+                                                    <span className="text-emerald-400 font-bold text-xs">🌱</span>
+                                                    <span className="font-medium text-xs">{grow.plantCount} {t.newGrow.plantCount || 'Plants'}</span>
+                                                </div>
+                                            )}
+                                            {grow.strains && grow.strains.length > 0 && (
+                                                <div className="text-sm text-slate-300 flex items-center gap-1.5 bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700/50" title={grow.strains.join(', ')}>
+                                                    <span className="text-emerald-400 font-bold text-xs">🧬</span>
+                                                    <span className="font-medium text-xs">{grow.strains.length} {t.newGrow.strains || 'Strains'}</span>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
-                            ) : (
-                                (grow.plantCount || (grow.strains && grow.strains.length > 0)) && (
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                        {grow.plantCount && (
-                                            <span className="text-sm text-slate-300 bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700/50">
-                                                🌱 {grow.plantCount} {t.newGrow.plantCount || 'Plants'}
-                                            </span>
-                                        )}
-                                        {grow.strains && grow.strains.length > 0 && (
-                                            <span className="text-sm text-slate-300 bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700/50" title={grow.strains.join(', ')}>
-                                                🧬 {grow.strains.length} {t.newGrow.strains || 'Strains'}
-                                            </span>
-                                        )}
-                                    </div>
-                                )
                             )}
                         </div>
                     )}
@@ -1134,40 +1254,34 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                 )}
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="glass-panel p-4 text-center">
-                    <span className="block text-3xl font-bold text-emerald-400">{daysSinceStart}</span>
-                    <span className="text-xs text-slate-500 uppercase font-bold mt-1 block">{t.growDetail.totalDays}</span>
+            {/* Stats Badges - Dashboard Style */}
+            <div className="flex flex-wrap gap-2 mb-4">
+                <div className="px-3 py-1 rounded-md text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-2 shadow-sm">
+                    <span>⏱️ {daysSinceStart} {t.growDetail.totalDays}</span>
                 </div>
-                <div className="glass-panel p-4 text-center">
-                    <span className="block text-3xl font-bold text-blue-400">{weeksSinceStart}</span>
-                    <span className="text-xs text-slate-500 uppercase font-bold mt-1 block">{t.growDetail.weeks}</span>
+                <div className="px-3 py-1 rounded-md text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-2 shadow-sm">
+                    <span>📆 {weeksSinceStart} {t.growDetail.weeks}</span>
                 </div>
 
                 {/* Flower Stats (Only visible if flowering started) */}
                 {flowerDays > 0 && (
                     <>
-                        <div className="glass-panel p-4 text-center border-t-2 border-t-pink-500">
-                            <span className="block text-3xl font-bold text-pink-400">{flowerDays}</span>
-                            <span className="text-xs text-slate-500 uppercase font-bold mt-1 block">{t.growDetail.flowerDays || 'Blütetage'}</span>
+                        <div className="px-3 py-1 rounded-md text-sm font-bold bg-pink-500/10 text-pink-400 border border-pink-500/20 flex items-center gap-2 shadow-sm">
+                            <span>🌺 {flowerDays} {t.growDetail.flowerDays || 'Blütetage'}</span>
                         </div>
-                        <div className="glass-panel p-4 text-center border-t-2 border-t-pink-500">
-                            <span className="block text-3xl font-bold text-pink-400">{flowerWeeks}</span>
-                            <span className="text-xs text-slate-500 uppercase font-bold mt-1 block">{t.growDetail.flowerWeeks || 'Blütewochen'}</span>
+                        <div className="px-3 py-1 rounded-md text-sm font-bold bg-pink-500/10 text-pink-400 border border-pink-500/20 flex items-center gap-2 shadow-sm">
+                            <span>📅 {flowerWeeks} {t.growDetail.flowerWeeks || 'Blütewochen'}</span>
                         </div>
                     </>
                 )}
 
                 {profile && (
                     <>
-                        <div className="glass-panel p-4 text-center">
-                            <span className="block text-3xl font-bold text-purple-400">{profile.vegiDurationWeeks}</span>
-                            <span className="text-xs text-slate-500 uppercase font-bold mt-1 block">{t.growDetail.estVegiWeeks}</span>
+                        <div className="px-3 py-1 rounded-md text-sm font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center gap-2 shadow-sm" title={t.growDetail.estVegiWeeks}>
+                            <span>🌱 {profile.vegiDurationWeeks} {t.growDetail.estVegiWeeks}</span>
                         </div>
-                        <div className="glass-panel p-4 text-center">
-                            <span className="block text-3xl font-bold text-orange-400">{profile.flowerDurationWeeks}</span>
-                            <span className="text-xs text-slate-500 uppercase font-bold mt-1 block">{t.growDetail.estFlowerWeeks}</span>
+                        <div className="px-3 py-1 rounded-md text-sm font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center gap-2 shadow-sm" title={t.growDetail.estFlowerWeeks}>
+                            <span>🌻 {profile.flowerDurationWeeks} {t.growDetail.estFlowerWeeks}</span>
                         </div>
                     </>
                 )}
@@ -1241,7 +1355,7 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                             </button>
                         </div>
 
-                        {renderLogForm(false)}
+                        {renderLogFormUpdated(false)}
 
                         <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-700">
                             <label className="btn btn-secondary cursor-pointer text-sm py-1.5">
@@ -1315,7 +1429,7 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                     </button>
                                 </div>
 
-                                {renderLogForm(true)}
+                                {renderLogFormUpdated(true)}
 
                                 {/* Edit Log Images */}
                                 <div className="mt-4 border-t border-slate-700 pt-4">
@@ -1323,8 +1437,8 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                                         <h5 className="font-bold text-slate-400 text-sm flex items-center gap-2">
                                             <Camera size={14} /> {t.growDetail.photos || 'Photos'}
                                         </h5>
-                                        <label className="text-xs text-emerald-400 hover:text-emerald-300 cursor-pointer flex items-center gap-1">
-                                            <Plus size={12} /> {t.growDetail.addPhotos}
+                                        <label className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 text-xs font-bold transition-colors hover:underline cursor-pointer" style={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
+                                            <Plus size={14} /> {t.growDetail.addPhotos}
                                             <input type="file" multiple accept="image/*" className="hidden" onChange={handleEditImageUpload} />
                                         </label>
                                     </div>
@@ -1362,14 +1476,14 @@ ${log.images.map(() => `[img]Image Upload Not Supported in Text Export[/img]`).j
                             </div>
                         ) : (
                             <>
-                                <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => startEditLog(log)} className="p-2 hover:bg-slate-700 rounded text-blue-400 hover:text-blue-300" title={t.common.edit}>
+                                <div className="absolute top-6 right-6 flex gap-2">
+                                    <button onClick={() => startEditLog(log)} className="bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-blue-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.common.edit}>
                                         <Edit2 size={16} />
                                     </button>
-                                    <button onClick={() => deleteLog(log.id)} className="p-2 hover:bg-slate-700 rounded text-red-400 hover:text-red-300" title={t.common.delete}>
+                                    <button onClick={() => deleteLog(log.id)} className="bg-slate-800/50 hover:bg-red-900/20 text-slate-400 hover:text-red-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.common.delete}>
                                         <Trash2 size={16} />
                                     </button>
-                                    <button onClick={() => handleExportForum(log)} className="p-2 hover:bg-slate-700 rounded text-slate-500 hover:text-emerald-400" title={t.growDetail.copyForForum}>
+                                    <button onClick={() => handleExportForum(log)} className="bg-slate-800/50 hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.growDetail.copyForForum}>
                                         <Share2 size={16} />
                                     </button>
                                 </div>
