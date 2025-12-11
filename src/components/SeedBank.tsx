@@ -2,8 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useStore } from '../context/StoreContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { Seed } from '../types';
-import { Plus, Trash2, Edit2, Sprout, ArrowUpDown, X } from 'lucide-react';
+
+import { Plus, Trash2, Edit2, Sprout, ArrowUpDown, X, Download, Upload } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { format } from 'date-fns';
 
 export default function SeedBank() {
     const { t } = useLanguage();
@@ -89,6 +91,57 @@ export default function SeedBank() {
         setEditingId(null);
         setIsEditing(false);
     };
+
+    const handleExport = (seed: Seed) => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(seed, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `seed_${seed.name.replace(/\s+/g, '_')}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    };
+
+    const handleExportAll = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(seeds, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `all_seeds_${format(new Date(), 'yyyy-MM-dd')}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    };
+
+    const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target?.result as string);
+                const seedsToImport = Array.isArray(importedData) ? importedData : [importedData];
+
+                let count = 0;
+                seedsToImport.forEach((s: any) => {
+                    if (s.name) {
+                        addSeed({
+                            ...s,
+                            id: uuidv4()
+                        });
+                        count++;
+                    }
+                });
+                alert(`Imported ${count} seeds successfully.`);
+            } catch (error) {
+                console.error("Import error:", error);
+                alert("Failed to import seeds. Invalid file format.");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    };
+
 
     const getTypeColor = (type: string) => {
         switch (type) {
@@ -242,9 +295,25 @@ export default function SeedBank() {
                             <button onClick={() => setIsEditing(true)} className="btn btn-primary">
                                 <Plus size={20} /> {t.seedBank.addStrain}
                             </button>
+                            <label className="btn btn-secondary cursor-pointer ml-2">
+                                <Upload size={18} /> {t.profiles?.import || 'Import'}
+                                <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+                            </label>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
+                            <div className="flex justify-end p-4 border-b border-slate-700/50 gap-2">
+                                <button onClick={handleExportAll} className="btn btn-secondary" title={t.profiles?.export || 'Export All'}>
+                                    <Download size={18} /> {t.profiles?.export || 'Export All'}
+                                </button>
+                                <label className="btn btn-secondary cursor-pointer" title={t.profiles?.import || 'Import'}>
+                                    <Upload size={18} /> {t.profiles?.import || 'Import'}
+                                    <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+                                </label>
+                                <button onClick={() => setIsEditing(true)} className="btn btn-primary">
+                                    <Plus size={18} /> {t.seedBank.addStrain}
+                                </button>
+                            </div>
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-slate-700/50 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-900/20">
@@ -293,10 +362,13 @@ export default function SeedBank() {
                                             <td className="p-4 text-slate-400 truncate max-w-[150px]" title={seed.taste}>{seed.taste || '-'}</td>
                                             <td className="p-4 text-right">
                                                 <div className="flex justify-end gap-2">
-                                                    <button onClick={() => handleEdit(seed)} className="p-2 hover:bg-slate-700/50 rounded-lg text-blue-400 transition-colors border border-transparent hover:border-slate-600">
+                                                    <button onClick={() => handleEdit(seed)} className="bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-blue-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.common.edit}>
                                                         <Edit2 size={16} />
                                                     </button>
-                                                    <button onClick={() => deleteSeed(seed.id)} className="p-2 hover:bg-slate-700/50 rounded-lg text-red-400 transition-colors border border-transparent hover:border-slate-600">
+                                                    <button onClick={() => handleExport(seed)} className="bg-slate-800/50 hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.common?.export || "Export"}>
+                                                        <Download size={16} />
+                                                    </button>
+                                                    <button onClick={() => deleteSeed(seed.id)} className="bg-slate-800/50 hover:bg-red-900/20 text-slate-400 hover:text-red-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.common.delete}>
                                                         <Trash2 size={16} />
                                                     </button>
                                                 </div>

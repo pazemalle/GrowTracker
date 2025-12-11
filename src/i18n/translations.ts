@@ -16,6 +16,7 @@ export const translations = {
             storageBadgeHybridTooltip: 'Du hast lokale Daten. Gehe zu Einstellungen, um sie zum Server hochzuladen.',
             setups: 'Grow Setups',
             seeds: 'Seeds',
+            notes: 'Notizen',
         },
 
         // Setup Manager
@@ -37,6 +38,7 @@ export const translations = {
             noSetups: 'Keine Setups hinzugefügt',
             createFirst: 'Erstelle dein erstes Setup',
             deleteConfirm: 'Bist du sicher, dass du dieses Setup löschen möchtest?',
+            importData: 'Importieren',
         },
 
         // Seed Bank
@@ -60,6 +62,19 @@ export const translations = {
             automatic: 'Autoflowering',
             photoperiodic: 'Photoperiodisch',
             regular: 'Regulär',
+        },
+
+        // Notes
+        notes: {
+            title: 'Notizen',
+            subtitle: 'Persönliche Grow-Notizen verwalten',
+            addNote: 'Notiz hinzufügen',
+            editNote: 'Notiz bearbeiten',
+            noteTitle: 'Titel',
+            noteContent: 'Inhalt',
+            tags: 'Tags',
+            noNotes: 'Keine Notizen gefunden',
+            createFirst: 'Erstelle deine erste Notiz.',
         },
 
         // Dashboard
@@ -188,6 +203,7 @@ export const translations = {
             saveEntry: 'Eintrag speichern',
             logHistory: 'Log Historie',
             copyForForum: 'Für Forum kopieren',
+            copyAllForForum: 'Alle Logs für Forum kopieren',
             day: 'Tag',
             date: 'Datum',
             stage: 'Phase',
@@ -255,6 +271,7 @@ export const translations = {
             newestFirst: 'Neueste zuerst',
             oldestFirst: 'Älteste zuerst',
             allStages: 'Alle Phasen',
+            export: 'Exportieren',
         },
     },
 
@@ -275,6 +292,7 @@ export const translations = {
             storageBadgeHybridTooltip: 'You have local data. Go to Settings to upload it to the server.',
             setups: 'Grow Setups',
             seeds: 'Seeds',
+            notes: 'Notes',
         },
 
         // Setup Manager
@@ -296,6 +314,7 @@ export const translations = {
             noSetups: 'No Setups Added',
             createFirst: 'Create Your First Setup',
             deleteConfirm: 'Are you sure you want to delete this setup?',
+            importData: 'Import',
         },
 
         // Seed Bank
@@ -319,6 +338,19 @@ export const translations = {
             automatic: 'Automatic',
             photoperiodic: 'Photoperiodic',
             regular: 'Regular',
+        },
+
+        // Notes
+        notes: {
+            title: 'Notes',
+            subtitle: 'Manage your personal grow notes',
+            addNote: 'Add Note',
+            editNote: 'Edit Note',
+            noteTitle: 'Title',
+            noteContent: 'Content',
+            tags: 'Tags',
+            noNotes: 'No notes found',
+            createFirst: 'Create your first note to get started.',
         },
 
         // Dashboard
@@ -426,6 +458,7 @@ export const translations = {
             saveEntry: 'Save Entry',
             logHistory: 'Log History',
             copyForForum: 'Copy for Forum',
+            copyAllForForum: 'Copy all for Forum',
             day: 'Day',
             date: 'Date',
             stage: 'Stage',
@@ -515,6 +548,7 @@ export const translations = {
             newestFirst: 'Latest first',
             oldestFirst: 'Oldest first',
             allStages: 'All Stages',
+            export: 'Export',
         },
     },
 };

@@ -443,14 +443,14 @@ export const Profiles: React.FC = () => {
                     <div key={profile.id} className="glass-panel p-6 hover:border-emerald-500/50 transition-colors group">
                         <div className="flex justify-between items-start mb-4">
                             <h3 className="text-xl font-bold text-emerald-400">{profile.name}</h3>
-                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleExport(profile)} className="p-2 hover:bg-slate-700 rounded text-slate-400 hover:text-white" title={t.profiles.export}>
+                            <div className="flex gap-2 transition-opacity">
+                                <button onClick={() => handleExport(profile)} className="bg-slate-800/50 hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.profiles.export}>
                                     <Download size={16} />
                                 </button>
-                                <button onClick={() => handleEdit(profile)} className="p-2 hover:bg-slate-700 rounded text-blue-400 hover:text-blue-300" title={t.profiles.edit}>
+                                <button onClick={() => handleEdit(profile)} className="bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-blue-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.profiles.edit}>
                                     <Edit2 size={16} />
                                 </button>
-                                <button onClick={() => handleDelete(profile.id)} className="p-2 hover:bg-slate-700 rounded text-red-400 hover:text-red-300" title={t.profiles.delete}>
+                                <button onClick={() => handleDelete(profile.id)} className="bg-slate-800/50 hover:bg-red-900/20 text-slate-400 hover:text-red-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.profiles.delete}>
                                     <Trash2 size={16} />
                                 </button>
                             </div>

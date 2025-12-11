@@ -688,7 +688,26 @@ export const GrowDetail: React.FC = () => {
         setEditLogImages(prev => prev.filter((_, i) => i !== index));
     };
 
-    const handleExportForum = (log: LogEntry) => {
+
+
+    const handleExportProject = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(grow));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `${grow.name.replace(/\s+/g, '_')}_grow.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    };
+
+    const handleDeleteGrow = () => {
+        if (confirm(t.growDetail.deleteConfirm)) {
+            deleteGrow(grow.id);
+            navigate('/');
+        }
+    };
+
+    const generateForumBBCode = (log: LogEntry) => {
         const dateStr = format(new Date(log.date), 'dd.MM.yyyy');
         let bbcode = `[b]${dateStr} - ${log.title}[/b]\n\n`;
 
@@ -727,25 +746,23 @@ export const GrowDetail: React.FC = () => {
             bbcode += `\n[i]${log.images.length} Bild(er) angehängt (Upload im Forum erforderlich)[/i]`;
         }
 
+        return bbcode;
+    };
+
+    const handleExportForum = (log: LogEntry) => {
+        const bbcode = generateForumBBCode(log);
         navigator.clipboard.writeText(bbcode);
         alert(t.growDetail.bbcodeCopied);
     };
 
-    const handleExportProject = () => {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(grow));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", `${grow.name.replace(/\s+/g, '_')}_grow.json`);
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-    };
+    const handleExportAllLogsForum = () => {
+        // Sort logs by date ascending (chronological) for the report
+        const sortedLogs = [...grow.logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    const handleDeleteGrow = () => {
-        if (confirm(t.growDetail.deleteConfirm)) {
-            deleteGrow(grow.id);
-            navigate('/');
-        }
+        const fullReport = sortedLogs.map(log => generateForumBBCode(log)).join('\n\n------------------------------------------------\n\n');
+
+        navigator.clipboard.writeText(fullReport);
+        alert(t.growDetail.bbcodeCopied);
     };
 
     const stages: Stage[] = ['seedling', 'vegetation', 'flowering', 'drying', 'curing'];
@@ -1386,7 +1403,12 @@ export const GrowDetail: React.FC = () => {
             {/* Log History */}
             <div className="space-y-6">
                 <div className="flex flex-wrap justify-between items-center gap-4">
-                    <h3 className="text-xl font-bold text-white">{t.growDetail.logHistory}</h3>
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-bold text-white">{t.growDetail.logHistory}</h3>
+                        <button onClick={handleExportAllLogsForum} className="bg-slate-800 border border-slate-700 hover:bg-emerald-900/30 text-slate-300 hover:text-emerald-400 px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors" title={t.growDetail.copyAllForForum}>
+                            <Share2 size={12} /> {t.growDetail.copyAllForForum}
+                        </button>
+                    </div>
 
                     <div className="flex items-center gap-2">
                         {/* Sort Toggle */}

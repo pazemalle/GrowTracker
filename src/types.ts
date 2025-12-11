@@ -119,11 +119,21 @@ export interface Grow {
   strainDistribution?: StrainDistribution[]; // Detailed strain counts
 }
 
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  date: string; // ISO Date
+  tags?: string[];
+}
+
 export interface GrowContextType {
   grows: Grow[];
   profiles: Profile[];
   setups: GrowSetup[]; // New
   seeds: Seed[]; // New
+  notes: Note[];
   addGrow: (grow: Grow) => void;
   updateGrow: (grow: Grow) => void;
   deleteGrow: (id: string) => void;
@@ -136,6 +146,9 @@ export interface GrowContextType {
   addSeed: (seed: Seed) => void;
   updateSeed: (seed: Seed) => void;
   deleteSeed: (id: string) => void;
-  importData: (data: { grows: Grow[]; profiles: Profile[]; setups?: GrowSetup[]; seeds?: Seed[] }) => void;
+  addNote: (note: Note) => void;
+  updateNote: (note: Note) => void;
+  deleteNote: (id: string) => void;
+  importData: (data: { grows: Grow[]; profiles: Profile[]; setups?: GrowSetup[]; seeds?: Seed[]; notes?: Note[] }) => void;
   clearData: () => void;
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import type { Grow, Profile, GrowContextType, GrowSetup, Seed } from '../types';
+import type { Grow, Profile, GrowContextType, GrowSetup, Seed, Note } from '../types';
 import { useAuth } from './AuthContext';
 
 const GrowContext = createContext<GrowContextType | undefined>(undefined);
@@ -8,6 +8,7 @@ const STORAGE_KEY_GROWS = 'cgt_grows';
 const STORAGE_KEY_PROFILES = 'cgt_profiles';
 const STORAGE_KEY_SETUPS = 'cgt_setups';
 const STORAGE_KEY_SEEDS = 'cgt_seeds';
+const STORAGE_KEY_NOTES = 'cgt_notes';
 const API_URL = 'http://localhost:3001/api';
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -15,6 +16,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [setups, setSetups] = useState<GrowSetup[]>([]);
     const [seeds, setSeeds] = useState<Seed[]>([]);
+    const [notes, setNotes] = useState<Note[]>([]);
     const [isInitialized, setIsInitialized] = useState(false);
 
     // Get auth state (but only if AuthContext is available)
@@ -39,12 +41,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const loadedGrows = localStorage.getItem(STORAGE_KEY_GROWS);
         const loadedProfiles = localStorage.getItem(STORAGE_KEY_PROFILES);
         const loadedSetups = localStorage.getItem(STORAGE_KEY_SETUPS);
+
         const loadedSeeds = localStorage.getItem(STORAGE_KEY_SEEDS);
+        const loadedNotes = localStorage.getItem(STORAGE_KEY_NOTES);
 
         if (loadedGrows) { try { setGrows(JSON.parse(loadedGrows)); } catch (e) { console.error(e); } }
         if (loadedProfiles) { try { setProfiles(JSON.parse(loadedProfiles)); } catch (e) { console.error(e); } }
         if (loadedSetups) { try { setSetups(JSON.parse(loadedSetups)); } catch (e) { console.error(e); } }
         if (loadedSeeds) { try { setSeeds(JSON.parse(loadedSeeds)); } catch (e) { console.error(e); } }
+        if (loadedNotes) { try { setNotes(JSON.parse(loadedNotes)); } catch (e) { console.error(e); } }
 
         setIsInitialized(true);
     }, [isAuthenticated]);
@@ -65,6 +70,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     if (serverData.profiles) setProfiles(serverData.profiles);
                     if (serverData.setups) setSetups(serverData.setups);
                     if (serverData.seeds) setSeeds(serverData.seeds);
+                    if (serverData.notes) setNotes(serverData.notes);
                 }
             } catch (error) {
                 console.error('Failed to fetch server data:', error);
@@ -81,7 +87,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(profiles));
         localStorage.setItem(STORAGE_KEY_SETUPS, JSON.stringify(setups));
         localStorage.setItem(STORAGE_KEY_SEEDS, JSON.stringify(seeds));
-    }, [grows, profiles, setups, seeds, isInitialized, isAuthenticated]);
+        localStorage.setItem(STORAGE_KEY_NOTES, JSON.stringify(notes));
+    }, [grows, profiles, setups, seeds, notes, isInitialized, isAuthenticated]);
 
     // Sync to Server (Authenticated Mode)
     useEffect(() => {
@@ -95,7 +102,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ grows, profiles, setups, seeds })
+                    body: JSON.stringify({ grows, profiles, setups, seeds, notes })
                 });
                 console.log('Synced to server');
             } catch (error) {
@@ -105,7 +112,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         const timeoutId = setTimeout(syncToServer, 1000);
         return () => clearTimeout(timeoutId);
-    }, [grows, profiles, setups, seeds, isAuthenticated, token, isInitialized]);
+    }, [grows, profiles, setups, seeds, notes, isAuthenticated, token, isInitialized]);
 
     const addGrow = (grow: Grow) => setGrows((prev) => [...prev, grow]);
     const updateGrow = (u: Grow) => setGrows((prev) => prev.map((g) => (g.id === u.id ? u : g)));
@@ -123,11 +130,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const updateSeed = (u: Seed) => setSeeds((prev) => prev.map((s) => (s.id === u.id ? u : s)));
     const deleteSeed = (id: string) => setSeeds((prev) => prev.filter((s) => s.id !== id));
 
-    const importData = (data: { grows: Grow[]; profiles: Profile[]; setups?: GrowSetup[]; seeds?: Seed[] }) => {
+    const addNote = (n: Note) => setNotes((prev) => [...prev, n]);
+    const updateNote = (u: Note) => setNotes((prev) => prev.map((n) => (n.id === u.id ? u : n)));
+    const deleteNote = (id: string) => setNotes((prev) => prev.filter((n) => n.id !== id));
+
+    const importData = (data: { grows: Grow[]; profiles: Profile[]; setups?: GrowSetup[]; seeds?: Seed[]; notes?: Note[] }) => {
         setGrows(data.grows);
         setProfiles(data.profiles);
         if (data.setups) setSetups(data.setups);
         if (data.seeds) setSeeds(data.seeds);
+        if (data.notes) setNotes(data.notes);
     };
 
     const clearData = () => {
@@ -136,16 +148,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setProfiles([]);
         setSetups([]);
         setSeeds([]);
+        setNotes([]);
     };
 
     return (
         <GrowContext.Provider
             value={{
-                grows, profiles, setups, seeds,
+                grows, profiles, setups, seeds, notes,
                 addGrow, updateGrow, deleteGrow,
                 addProfile, updateProfile, deleteProfile,
                 addSetup, updateSetup, deleteSetup,
                 addSeed, updateSeed, deleteSeed,
+                addNote, updateNote, deleteNote,
                 importData, clearData,
             }}
         >

@@ -225,7 +225,7 @@ export const Dashboard: React.FC = () => {
                                         <div className="flex items-center gap-2 self-start">
                                             <button
                                                 onClick={(e) => handleExportGrow(e, grow)}
-                                                className="p-1 hover:bg-white/10 rounded text-slate-400 hover:text-white transition-colors"
+                                                className="bg-slate-800/50 hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm"
                                                 title={t.growDetail.export}
                                             >
                                                 <Download size={16} />

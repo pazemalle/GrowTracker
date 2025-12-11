@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useStore } from '../context/StoreContext';
 import { useLanguage } from '../context/LanguageContext';
 import type { GrowSetup } from '../types';
-import { Plus, Trash2, Edit2, Hexagon, Wind, Lightbulb, X, Fan, Filter } from 'lucide-react';
+
+import { Plus, Trash2, Edit2, Hexagon, Wind, Lightbulb, X, Fan, Filter, Download, Upload } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { format } from 'date-fns';
 
 export default function SetupManager() {
     const { t } = useLanguage();
@@ -48,10 +50,75 @@ export default function SetupManager() {
     };
 
     const resetForm = () => {
-        setFormData({ name: '', tent: '', lights: '', exhaust: '', filter: '', circulation: '', notes: '' });
+        setFormData({
+            name: '',
+            tent: '',
+            lights: '',
+            exhaust: '',
+            filter: '',
+            circulation: '',
+            notes: ''
+        });
         setEditingId(null);
         setIsEditing(false);
     };
+
+    const deleteSetupConfirm = (id: string) => {
+        if (confirm(t.setupManager.deleteConfirm || 'Are you sure?')) {
+            deleteSetup(id);
+        }
+    };
+
+    const handleExport = (setup: GrowSetup) => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(setup, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `setup_${setup.name.replace(/\s+/g, '_')}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    };
+
+    const handleExportAll = () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(setups, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `all_setups_${format(new Date(), 'yyyy-MM-dd')}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    };
+
+    const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedData = JSON.parse(event.target?.result as string);
+                const setupsToImport = Array.isArray(importedData) ? importedData : [importedData];
+
+                let count = 0;
+                setupsToImport.forEach((s: any) => {
+                    if (s.name) {
+                        addSetup({
+                            ...s,
+                            id: uuidv4()
+                        });
+                        count++;
+                    }
+                });
+                alert(`Imported ${count} setups successfully.`);
+            } catch (error) {
+                console.error("Import error:", error);
+                alert("Failed to import setups. Invalid file format.");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    };
+
 
     return (
         <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
@@ -63,12 +130,25 @@ export default function SetupManager() {
                     <p className="text-slate-400 mt-1">{t.setupManager.subtitle}</p>
                 </div>
 
-                <button
-                    onClick={() => setIsEditing(!isEditing)}
-                    className={`btn ${isEditing ? 'btn-secondary' : 'btn-primary'}`}
-                >
-                    {isEditing ? <><X size={20} /> {t.common.cancel}</> : <><Plus size={20} /> {t.setupManager.newSetup}</>}
-                </button>
+                <div className="flex gap-2">
+                    {!isEditing && setups.length > 0 && (
+                        <>
+                            <button onClick={handleExportAll} className="btn btn-secondary" title={t.common?.export || 'Export All'}>
+                                <Download size={18} /> {t.common?.export || 'Export All'}
+                            </button>
+                            <label className="btn btn-secondary cursor-pointer" title={t.setupManager.importData || 'Import'}>
+                                <Upload size={18} /> {t.setupManager.importData || 'Import'}
+                                <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+                            </label>
+                        </>
+                    )}
+                    <button
+                        onClick={() => setIsEditing(!isEditing)}
+                        className={`btn ${isEditing ? 'btn-secondary' : 'btn-primary'}`}
+                    >
+                        {isEditing ? <><X size={20} /> {t.common.cancel}</> : <><Plus size={20} /> {t.setupManager.newSetup}</>}
+                    </button>
+                </div>
             </div>
 
             {isEditing && (
@@ -219,17 +299,24 @@ export default function SetupManager() {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => handleExport(setup)}
+                                        className="bg-slate-800/50 hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm"
+                                        title={t.common?.export || "Export"}
+                                    >
+                                        <Download size={16} />
+                                    </button>
                                     <button
                                         onClick={() => handleEdit(setup)}
-                                        className="p-2 hover:bg-slate-700/50 rounded-lg text-blue-400 transition-colors"
+                                        className="bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-blue-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm"
                                         title="Edit Setup"
                                     >
                                         <Edit2 size={16} />
                                     </button>
                                     <button
-                                        onClick={() => deleteSetup(setup.id)}
-                                        className="p-2 hover:bg-slate-700/50 rounded-lg text-red-400 transition-colors"
+                                        onClick={() => deleteSetupConfirm(setup.id)}
+                                        className="bg-slate-800/50 hover:bg-red-900/20 text-slate-400 hover:text-red-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm"
                                         title="Delete Setup"
                                     >
                                         <Trash2 size={16} />

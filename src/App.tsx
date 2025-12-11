@@ -3,13 +3,14 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 import { StoreProvider, useStore } from './context/StoreContext';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, setStoreContextRef } from './context/AuthContext';
-import { LayoutDashboard, Sprout, Settings, PlusCircle, Menu, X, Hexagon, Archive } from 'lucide-react';
+import { LayoutDashboard, Sprout, Settings, PlusCircle, Menu, X, Hexagon, Archive, FileText } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { Profiles } from './components/Profiles';
 import { NewGrow } from './components/NewGrow';
 import { GrowDetail } from './components/GrowDetail';
 import { SettingsPage } from './components/Settings';
 import SeedBank from './components/SeedBank';
+import Notes from './components/Notes';
 import SetupManager from './components/SetupManager';
 import { useLanguage } from './context/LanguageContext';
 import { useAuth } from './context/AuthContext';
@@ -114,6 +115,11 @@ const Navigation = () => {
               <span>{t.nav.seeds}</span>
             </Link>
 
+            <Link to="/notes" className={`nav-link ${isActive('/notes') ? 'nav-link-active' : ''}`}>
+              <FileText size={20} />
+              <span>{t.nav.notes}</span>
+            </Link>
+
             <Link to="/settings" className={`nav-link ${isActive('/settings') ? 'nav-link-active' : ''}`}>
               <Settings size={20} />
               <span>{t.nav.settings}</span>
@@ -157,6 +163,7 @@ const AppContent = () => {
             <Route path="/profiles" element={<Profiles />} />
             <Route path="/setups" element={<SetupManager />} />
             <Route path="/seeds" element={<SeedBank />} />
+            <Route path="/notes" element={<Notes />} />
             <Route path="/new-grow" element={<NewGrow />} />
             <Route path="/grow/:id" element={<GrowDetail />} />
             <Route path="/settings" element={<SettingsPage />} />
