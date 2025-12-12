@@ -55,7 +55,9 @@ const initDb = () => {
             grows_json TEXT DEFAULT '[]',
             profiles_json TEXT DEFAULT '[]',
             setups_json TEXT DEFAULT '[]',
+
             seeds_json TEXT DEFAULT '[]',
+            notes_json TEXT DEFAULT '[]',
             last_updated DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )`, (err) => {
@@ -74,10 +76,24 @@ const initDb = () => {
                             console.log('Migrating: Adding seeds_json column...');
                             db.run("ALTER TABLE user_data ADD COLUMN seeds_json TEXT DEFAULT '[]'");
                         }
+                        const hasNotes = columns.some(col => col.name === 'notes_json');
+                        if (!hasNotes) {
+                            console.log('Migrating: Adding notes_json column...');
+                            db.run("ALTER TABLE user_data ADD COLUMN notes_json TEXT DEFAULT '[]'");
+                        }
                     }
                 });
             }
         });
+
+        // Backups Table
+        db.run(`CREATE TABLE IF NOT EXISTS backups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            data_json TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )`);
     });
 };
 

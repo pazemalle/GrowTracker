@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
-import { Globe, Download, Upload, Trash2, Key, Shield, ShieldOff, Lock } from 'lucide-react';
+import { Globe, Download, Upload, Trash2, Key, Shield, ShieldOff, Lock, RotateCcw, User, LogOut, ChevronDown, ChevronUp, Server, ShieldCheck } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
 const API_URL = 'http://localhost:3001/api';
@@ -13,6 +13,7 @@ export const SettingsPage: React.FC = () => {
         profiles,
         setups,
         seeds,
+        notes,
         importData,
         clearData
     } = useStore();
@@ -24,6 +25,7 @@ export const SettingsPage: React.FC = () => {
     const [currentPassword, setCurrentPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPasswordChange, setShowPasswordChange] = useState(false);
 
     // Admin State
     const [adminUsers, setAdminUsers] = useState<any[]>([]);
@@ -34,6 +36,103 @@ export const SettingsPage: React.FC = () => {
             fetchUsers();
         }
     }, [isAuthenticated, role, showAdminPanel]);
+
+    const [backups, setBackups] = useState<any[]>([]);
+    const [showBackups, setShowBackups] = useState(false);
+    const [showSyncDetails, setShowSyncDetails] = useState(false);
+    const [selectedBackupId, setSelectedBackupId] = useState<number | null>(null);
+    const [restoreCategories, setRestoreCategories] = useState({
+        grows: true,
+        profiles: true,
+        setups: true,
+        seeds: true,
+        notes: true
+    });
+
+    React.useEffect(() => {
+        if (isAuthenticated) {
+            fetchBackups();
+        }
+    }, [isAuthenticated]);
+
+    const fetchBackups = async () => {
+        try {
+            const token = localStorage.getItem('cgt_token');
+            const response = await fetch(`${API_URL}/data/backups`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                setBackups(await response.json());
+            }
+        } catch (error) {
+            console.error('Failed to fetch backups');
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if (!confirm('Bist du dir sicher? Dein Account und ALLE deine Daten werden unwiderruflich gelöscht!')) return;
+
+        // Second confirmation
+        const currentUsername = username || '';
+        const input = prompt(`Zur Bestätigung bitte deinen Benutzernamen eingeben: ${currentUsername}`);
+
+        if (input !== currentUsername) {
+            alert(`Benutzername stimmt nicht überein. (Erwartet: ${currentUsername})`);
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('cgt_token');
+            const response = await fetch(`${API_URL}/data/user/delete-account`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                alert('Account erfolgreich gelöscht. Auf Wiedersehen!');
+                handleLogout(); // Cleans up and redirects
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Fehler beim Löschen des Accounts');
+            }
+        } catch (error) {
+            alert('Verbindungsfehler');
+        }
+    };
+
+    const handleRestoreBackup = async (id: number) => {
+        const categoriesToRestore = Object.entries(restoreCategories)
+            .filter(([_, checked]) => checked)
+            .map(([key]) => key);
+
+        if (categoriesToRestore.length === 0) {
+            alert('Bitte wähle mindestens eine Kategorie aus.');
+            return;
+        }
+
+        if (!confirm(`Möchtest du folgende Daten aus dem Backup wiederherstellen?\n${categoriesToRestore.join(', ')}\n\nAktuelle Daten in diesen Kategorien werden überschrieben!`)) return;
+
+        try {
+            const token = localStorage.getItem('cgt_token');
+            const response = await fetch(`${API_URL}/data/backups/${id}/restore`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ categories: categoriesToRestore })
+            });
+
+            if (response.ok) {
+                alert('Backup erfolgreich wiederhergestellt! Die Seite wird neu geladen.');
+                window.location.reload();
+            } else {
+                alert('Fehler beim Wiederherstellen');
+            }
+        } catch (error) {
+            alert('Verbindungsfehler');
+        }
+    };
 
     const handleChangePassword = async () => {
         if (!currentPassword || !newPassword || !confirmPassword) {
@@ -62,6 +161,7 @@ export const SettingsPage: React.FC = () => {
                 setCurrentPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
+                setShowPasswordChange(false);
             } else {
                 const data = await response.json();
                 alert(data.error || 'Error changing password');
@@ -242,7 +342,7 @@ export const SettingsPage: React.FC = () => {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ grows, profiles, setups, seeds })
+                body: JSON.stringify({ grows, profiles, setups, seeds, notes })
             });
 
             if (uploadResponse.ok) {
@@ -251,6 +351,7 @@ export const SettingsPage: React.FC = () => {
                 localStorage.removeItem('cgt_profiles');
                 localStorage.removeItem('cgt_setups');
                 localStorage.removeItem('cgt_seeds');
+                localStorage.removeItem('cgt_notes');
 
                 // Reload page to refresh state
                 window.location.reload();
@@ -263,7 +364,7 @@ export const SettingsPage: React.FC = () => {
     };
 
     const handleExportAll = () => {
-        const data = { grows, profiles };
+        const data = { grows, profiles, setups, seeds, notes };
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
@@ -298,6 +399,9 @@ export const SettingsPage: React.FC = () => {
         }
     };
 
+    const iconContainerStyle = { display: 'flex', justifyContent: 'center', alignItems: 'center', width: '32px', height: '100%' };
+    const rowStyle = { display: 'grid', gridTemplateColumns: '32px 1fr', gap: '16px', alignItems: 'center', textAlign: 'left' as const };
+
     return (
         <div className="space-y-8 animate-fade-in">
             <div>
@@ -307,8 +411,10 @@ export const SettingsPage: React.FC = () => {
 
             {/* Language Settings */}
             <div className="glass-panel p-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <Globe className="text-emerald-400" size={24} />
+                <div style={rowStyle} className="mb-4">
+                    <div style={iconContainerStyle}>
+                        <Globe className="text-emerald-400" size={20} />
+                    </div>
                     <div>
                         <h3 className="text-lg font-bold text-white">{t.settings.language}</h3>
                         <p className="text-sm text-slate-400">{t.settings.languageDesc}</p>
@@ -343,216 +449,346 @@ export const SettingsPage: React.FC = () => {
             {/* Server Storage / Auth */}
             <div className="glass-panel p-6">
                 <div className="mb-4">
-                    <h3 className="text-lg font-bold text-white">{t.settings.serverStorage}</h3>
+                    <h3 className="text-lg font-bold text-white mb-1">{t.settings.serverStorage}</h3>
                     <p className="text-sm text-slate-400">{t.settings.serverStorageDesc}</p>
                 </div>
 
                 {isAuthenticated ? (
-                    <div className="space-y-3">
-                        <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-4">
-                            <p className="text-sm text-emerald-300 mb-1">{t.settings.loggedInAs}</p>
-                            <p className="font-bold text-white">{username}</p>
+                    <div className="space-y-4">
+
+                        {/* 1. User Profile & Logout (Top Card) */}
+                        <div className="glass-panel border border-slate-700 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-4 w-full sm:w-auto">
+                                <div className="bg-emerald-500/20 p-3 rounded-full border border-emerald-500/30">
+                                    <User className="text-emerald-400" size={24} />
+                                </div>
+                                <div>
+                                    <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">{t.settings.loggedInAs}</p>
+                                    <p className="font-bold text-white text-xl">{username}</p>
+                                    {role === 'admin' && <span className="text-[10px] bg-red-900/50 text-red-200 px-2 py-0.5 rounded-full border border-red-900">ADMIN</span>}
+                                </div>
+                            </div>
+                            <button
+                                onClick={handleLogout}
+                                className="w-full sm:w-auto px-4 py-2 flex items-center justify-center gap-2 text-slate-300 hover:text-red-300 rounded-lg border border-slate-600 hover:border-red-900/50 transition-all duration-300 group"
+                                style={{ backgroundColor: 'rgba(30, 41, 59, 0.5)' }}
+                            >
+                                <LogOut size={16} className="group-hover:-translate-x-1 transition-transform" />
+                                {t.settings.logout}
+                            </button>
                         </div>
 
-                        {/* Storage Mode Indicator */}
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-                            <p className="text-xs font-bold text-slate-400 mb-2">{t.settings.storageMode}</p>
-                            {localStorage.getItem('cgt_grows') || localStorage.getItem('cgt_profiles') || localStorage.getItem('cgt_setups') || localStorage.getItem('cgt_seeds') ? (
-                                <>
-                                    <p className="text-sm text-blue-300 mb-2">{t.settings.hybridMode}</p>
+                        {/* 2. Storage Mode Status */}
+                        <div className="border border-slate-700 rounded-lg overflow-hidden" style={{ backgroundColor: 'rgba(30, 41, 59, 0.3)' }}>
+                            <div className="p-4 flex items-center justify-between" style={{ backgroundColor: 'rgba(15, 23, 42, 0.4)' }}>
+                                <div style={rowStyle}>
+                                    <div style={iconContainerStyle}>
+                                        <Server size={20} className="text-blue-400" />
+                                    </div>
+                                    <span className="font-semibold text-slate-200">{t.settings.storageMode}</span>
+                                </div>
+                                {localStorage.getItem('cgt_grows') || localStorage.getItem('cgt_profiles') || localStorage.getItem('cgt_notes') ? (
+                                    <span className="text-xs font-bold text-blue-300 px-2 py-1 rounded border border-blue-900/30" style={{ backgroundColor: 'rgba(30, 58, 138, 0.2)' }}>{t.settings.hybridMode}</span>
+                                ) : (
+                                    <span className="text-xs font-bold text-emerald-400 px-2 py-1 rounded border border-emerald-900/30" style={{ backgroundColor: 'rgba(6, 78, 59, 0.2)' }}>{t.settings.serverMode}</span>
+                                )}
+                            </div>
+
+                            {/* Upload Action for Hybrid Mode */}
+                            {(localStorage.getItem('cgt_grows') || localStorage.getItem('cgt_profiles') || localStorage.getItem('cgt_notes')) && (
+                                <div className="p-4 border-t border-slate-700" style={{ backgroundColor: 'rgba(30, 58, 138, 0.05)' }}>
+                                    <p className="text-sm text-slate-300 mb-3">Du hast lokale Daten. Lade sie hoch, um sie zu synchronisieren.</p>
                                     <button
                                         onClick={handleUploadLocalData}
-                                        className="btn btn-primary w-full text-sm"
+                                        className="btn btn-primary w-full text-sm flex items-center justify-center gap-2"
                                     >
+                                        <Upload size={16} />
                                         {t.settings.uploadLocalData}
                                     </button>
-                                </>
-                            ) : (
-                                <p className="text-sm text-emerald-300">{t.settings.serverMode}</p>
+                                </div>
                             )}
                         </div>
 
-                        {/* Server Data Overview */}
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mt-3">
-                            <p className="text-xs font-bold text-slate-400 mb-3">Auf Server gespeichert</p>
-
-                            {/* Grows List */}
-                            <div className="mb-4">
-                                <p className="text-sm font-semibold text-emerald-300 mb-2">
-                                    Grows ({grows.length})
-                                </p>
-                                {grows.length > 0 ? (
-                                    <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
-                                        <span className="text-emerald-400">✓</span>
-                                        <span className="flex-1 truncate">GrowsDB (Synchronisiert)</span>
-                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
-                                            {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                        {/* 3. Sync Details (Collapsible) */}
+                        <div className="border border-slate-700 rounded-lg overflow-hidden transition-all duration-300">
+                            <button
+                                onClick={() => setShowSyncDetails(!showSyncDetails)}
+                                className="w-full flex items-center justify-between p-4 transition-colors hover:bg-slate-800/50"
+                                style={{ backgroundColor: 'rgba(30, 41, 59, 0.3)' }}
+                            >
+                                <div style={rowStyle} className="text-left">
+                                    <div style={iconContainerStyle}>
+                                        <ShieldCheck size={20} className="text-emerald-400" />
                                     </div>
-                                ) : (
-                                    <p className="text-xs text-slate-500 italic">Keine Grows gespeichert</p>
-                                )}
-                            </div>
-
-                            {/* Profiles List */}
-                            <div>
-                                <p className="text-sm font-semibold text-emerald-300 mb-2">
-                                    Profile ({profiles.length})
-                                </p>
-                                {profiles.length > 0 ? (
-                                    <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
-                                        <span className="text-emerald-400">✓</span>
-                                        <span className="flex-1 truncate">ProfileDB (Synchronisiert)</span>
-                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
-                                            {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                    <div className="text-left">
+                                        <h4 className="font-bold text-white text-sm">Synchronisierte Daten</h4>
+                                        <p className="text-[10px] text-slate-300">
+                                            {grows.length} Grows • {profiles.length} Profile • {notes.length} Notizen
+                                        </p>
                                     </div>
-                                ) : (
-                                    <p className="text-xs text-slate-500 italic">Keine Profile gespeichert</p>
-                                )}
-                            </div>
+                                </div>
+                                {showSyncDetails ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                            </button>
 
-                            {/* Setups List */}
-                            <div className="mt-4">
-                                <p className="text-sm font-semibold text-emerald-300 mb-2">
-                                    Setups ({setups.length})
-                                </p>
-                                {setups.length > 0 ? (
-                                    <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
-                                        <span className="text-emerald-400">✓</span>
-                                        <span className="flex-1 truncate">SetupsDB (Synchronisiert)</span>
-                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
-                                            {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                            {showSyncDetails && (
+                                <div className="p-4 border-t border-slate-700 space-y-2 animate-fade-in-down" style={{ backgroundColor: 'rgba(15, 23, 42, 0.3)' }}>
+                                    {[
+                                        { label: 'Grows', count: grows.length },
+                                        { label: 'Profile', count: profiles.length },
+                                        { label: 'Setups', count: setups.length },
+                                        { label: 'Seeds', count: seeds.length },
+                                        { label: 'Notizen', count: notes.length }
+                                    ].map(item => (
+                                        <div key={item.label} className="flex justify-between items-center text-xs p-2 rounded bg-slate-800/50">
+                                            <span className="text-slate-300">{item.label}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-emerald-400 font-bold">{item.count}</span>
+                                                <span className="text-slate-600">|</span>
+                                                <span className="text-slate-500">Synchronisiert</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div className="text-[10px] text-center text-slate-600 mt-2">
+                                        Zuletzt aktualisiert: {new Date().toLocaleTimeString()}
                                     </div>
-                                ) : (
-                                    <p className="text-xs text-slate-500 italic">Keine Setups gespeichert</p>
-                                )}
-                            </div>
-
-                            {/* Seeds List */}
-                            <div className="mt-4">
-                                <p className="text-sm font-semibold text-emerald-300 mb-2">
-                                    Seeds ({seeds.length})
-                                </p>
-                                {seeds.length > 0 ? (
-                                    <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900/50 rounded px-2 py-1">
-                                        <span className="text-emerald-400">✓</span>
-                                        <span className="flex-1 truncate">SeedsDB (Synchronisiert)</span>
-                                        <span className="text-slate-500 text-[10px] whitespace-nowrap">
-                                            {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })} {new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    </div>
-                                ) : (
-                                    <p className="text-xs text-slate-500 italic">Keine Seeds gespeichert</p>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
 
-                        <button onClick={handleLogout} className="btn btn-secondary w-full justify-center text-red-400 hover:text-red-300">
-                            {t.settings.logout}
-                        </button>
+                        {/* 4. Backups (Collapsible) */}
+                        <div className="border border-slate-700 rounded-lg overflow-hidden transition-all duration-300">
+                            <button
+                                onClick={() => setShowBackups(!showBackups)}
+                                className="w-full flex items-center justify-between p-4 transition-colors hover:bg-slate-800/50"
+                                style={{ backgroundColor: 'rgba(30, 41, 59, 0.3)' }}
+                            >
+                                <div style={rowStyle} className="text-left">
+                                    <div style={iconContainerStyle}>
+                                        <RotateCcw size={20} className="text-blue-400" />
+                                    </div>
+                                    <div className="text-left">
+                                        <h4 className="font-bold text-white text-sm">Backups</h4>
+                                        <p className="text-[10px] text-slate-300">{backups.length} verfügbar (Letzte 3)</p>
+                                    </div>
+                                </div>
+                                {showBackups ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                            </button>
 
-                        {/* Change Password Section */}
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 mt-4">
-                            <h4 className="font-bold text-slate-300 mb-3 text-sm">Passwort ändern</h4>
-                            <div className="space-y-2">
-                                <input
-                                    type="password"
-                                    className="input w-full text-sm"
-                                    placeholder="Aktuelles Passwort"
-                                    value={currentPassword}
-                                    onChange={e => setCurrentPassword(e.target.value)}
-                                />
-                                <input
-                                    type="password"
-                                    className="input w-full text-sm"
-                                    placeholder="Neues Passwort"
-                                    value={newPassword}
-                                    onChange={e => setNewPassword(e.target.value)}
-                                />
-                                <input
-                                    type="password"
-                                    className="input w-full text-sm"
-                                    placeholder="Neues Passwort bestätigen"
-                                    value={confirmPassword}
-                                    onChange={e => setConfirmPassword(e.target.value)}
-                                />
-                                <button onClick={handleChangePassword} className="btn btn-secondary w-full text-sm">
-                                    Passwort ändern
+                            {showBackups && (
+                                <div className="p-4 border-t border-slate-700 space-y-2 animate-fade-in-down" style={{ backgroundColor: 'rgba(15, 23, 42, 0.3)' }}>
+                                    {backups.length > 0 ? (
+                                        backups.map(backup => (
+                                            <div key={backup.id} className="bg-slate-800/50 rounded border border-slate-700 p-3">
+                                                <div className="flex items-center justify-between text-xs mb-2">
+                                                    <span className="text-slate-300 font-mono">
+                                                        {new Date(backup.created_at).toLocaleDateString('de-DE')} • {new Date(backup.created_at).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => setSelectedBackupId(selectedBackupId === backup.id ? null : backup.id)}
+                                                        className={`px-3 py-1 rounded transition-colors text-[10px] font-bold uppercase tracking-wider ${selectedBackupId === backup.id ? 'text-white' : 'text-blue-400 hover:bg-blue-900/40'}`}
+                                                        style={selectedBackupId === backup.id ? { backgroundColor: 'rgba(71, 85, 105, 1)' } : { backgroundColor: 'transparent' }}
+                                                    >
+                                                        {selectedBackupId === backup.id ? 'Abbrechen' : 'Wählen'}
+                                                    </button>
+                                                </div>
+
+                                                {/* Restore Options */}
+                                                {selectedBackupId === backup.id && (
+                                                    <div className="pt-3 border-t border-slate-700 animate-fade-in">
+                                                        <p className="text-[10px] text-slate-400 mb-2 uppercase font-bold">Wiederherstellen:</p>
+                                                        <div className="grid grid-cols-2 gap-2 mb-3">
+                                                            {Object.keys(restoreCategories).map(cat => (
+                                                                <label key={cat} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer hover:text-white select-none">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={restoreCategories[cat as keyof typeof restoreCategories]}
+                                                                        onChange={e => setRestoreCategories(prev => ({ ...prev, [cat]: e.target.checked }))}
+                                                                        className="rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-0 focus:ring-offset-0 w-3 h-3"
+                                                                    />
+                                                                    <span className="capitalize">{cat}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleRestoreBackup(backup.id)}
+                                                            className="w-full py-1.5 text-white rounded text-xs font-bold uppercase tracking-wide transition-colors hover:opacity-90"
+                                                            style={{ backgroundColor: 'rgba(16, 185, 129, 0.8)' }}
+                                                        >
+                                                            Auswahl wiederherstellen
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-xs text-slate-500 italic p-2 text-center">Keine Backups vorhanden</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 5. Password Change (Collapsible) */}
+                        <div className="border border-slate-700 rounded-lg overflow-hidden transition-all duration-300">
+                            {!showPasswordChange ? (
+                                <button
+                                    onClick={() => setShowPasswordChange(true)}
+                                    className="w-full flex items-center justify-between p-4 transition-colors hover:bg-slate-800/50"
+                                    style={{ backgroundColor: 'rgba(30, 41, 59, 0.3)' }}
+                                >
+                                    <div style={rowStyle} className="text-left">
+                                        <div style={iconContainerStyle}>
+                                            <Key size={20} className="text-amber-400" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="font-bold text-white text-sm">Passwort ändern</h4>
+                                            <p className="text-[10px] text-slate-400">Sicherheit</p>
+                                        </div>
+                                    </div>
+                                    <ChevronDown size={16} className="text-slate-400" />
                                 </button>
-                            </div>
+                            ) : (
+                                <div style={{ backgroundColor: 'rgba(15, 23, 42, 0.3)' }}>
+                                    <button
+                                        onClick={() => setShowPasswordChange(false)}
+                                        className="w-full flex items-center justify-between p-4 bg-slate-800/50 border-b border-slate-700"
+                                    >
+                                        <div style={rowStyle} className="text-left">
+                                            <div style={iconContainerStyle}>
+                                                <Key size={20} className="text-amber-400" />
+                                            </div>
+                                            <div className="text-left">
+                                                <h4 className="font-bold text-white text-sm">Passwort ändern</h4>
+                                                <p className="text-[10px] text-slate-400">Sicherheit</p>
+                                            </div>
+                                        </div>
+                                        <ChevronUp size={16} className="text-slate-400" />
+                                    </button>
+
+                                    <div className="p-4 space-y-3 animate-fade-in">
+                                        <input
+                                            type="password"
+                                            className="input w-full text-sm bg-slate-900 border-slate-700 focus:border-amber-500/50"
+                                            placeholder="Aktuelles Passwort"
+                                            value={currentPassword}
+                                            onChange={e => setCurrentPassword(e.target.value)}
+                                        />
+                                        <input
+                                            type="password"
+                                            className="input w-full text-sm bg-slate-900 border-slate-700 focus:border-amber-500/50"
+                                            placeholder="Neues Passwort"
+                                            value={newPassword}
+                                            onChange={e => setNewPassword(e.target.value)}
+                                        />
+                                        <input
+                                            type="password"
+                                            className="input w-full text-sm bg-slate-900 border-slate-700 focus:border-amber-500/50"
+                                            placeholder="Neues Passwort bestätigen"
+                                            value={confirmPassword}
+                                            onChange={e => setConfirmPassword(e.target.value)}
+                                        />
+                                        <button onClick={handleChangePassword} className="btn w-full bg-amber-600/20 text-amber-400 border border-amber-600/50 hover:bg-amber-600/40 text-sm">
+                                            Passwort aktualisieren
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Admin Panel */}
+                        {/* Admin Panel (Collapsible) */}
                         {role === 'admin' && (
-                            <div className="mt-6 border-t border-slate-700 pt-6">
+                            <div className="border border-slate-700 rounded-lg overflow-hidden transition-all duration-300 mt-4">
                                 <button
                                     onClick={() => setShowAdminPanel(!showAdminPanel)}
-                                    className="btn btn-danger w-full bg-red-900/20 text-red-400 border-red-900/50 hover:bg-red-900/40 mb-4"
+                                    className="w-full flex items-center justify-between p-4 transition-colors hover:bg-slate-800/50"
+                                    style={{ backgroundColor: 'rgba(30, 41, 59, 0.3)' }}
                                 >
-                                    {showAdminPanel ? 'Admin Panel ausblenden' : 'Admin Panel anzeigen'}
+                                    <div style={rowStyle} className="text-left">
+                                        <div style={iconContainerStyle}>
+                                            <Shield size={20} className="text-slate-400" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h4 className="font-bold text-white text-sm">Admin Panel</h4>
+                                            <p className="text-[10px] text-slate-400">Benutzerverwaltung & System</p>
+                                        </div>
+                                    </div>
+                                    {showAdminPanel ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
                                 </button>
 
                                 {showAdminPanel && (
-                                    <div className="space-y-4">
-                                        <h3 className="text-xl font-bold text-red-400">Admin Benutzerverwaltung</h3>
+                                    <div className="p-4 border-t border-slate-700 space-y-3 animate-fade-in-down" style={{ backgroundColor: 'rgba(15, 23, 42, 0.3)' }}>
+                                        <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-2">Benutzerverwaltung</h3>
                                         <div className="space-y-2">
                                             {adminUsers.map(user => (
                                                 <div key={user.id} className="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-700">
                                                     <div>
-                                                        <span className="font-bold text-white block">{user.username}</span>
-                                                        <span className="text-xs text-slate-500">Rolle: {user.role} • ID: {user.id}</span>
+                                                        <span className="font-bold text-white block text-sm">{user.username}</span>
+                                                        <span className="text-[10px] text-slate-500 uppercase">Rolle: {user.role} • ID: {user.id}</span>
                                                     </div>
                                                     <div className="flex gap-2">
-                                                        {/* Role Management */}
+                                                        {/* User Actions */}
                                                         {user.id !== 1 && user.id !== parseInt((localStorage.getItem('cgt_token') ? JSON.parse(atob(localStorage.getItem('cgt_token')!.split('.')[1])).id : 0)) && (
-                                                            <button
-                                                                onClick={() => handleToggleRole(user.id, user.role)}
-                                                                className={`p-2 rounded ${user.role === 'admin' ? 'text-yellow-400 hover:bg-yellow-900/20' : 'text-emerald-400 hover:bg-emerald-900/20'}`}
-                                                                title={user.role === 'admin' ? "Demote to User" : "Promote to Admin"}
-                                                            >
-                                                                {user.role === 'admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
-                                                            </button>
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleToggleRole(user.id, user.role)}
+                                                                    className={`p-1.5 rounded transition-colors ${user.role === 'admin' ? 'text-amber-400' : 'text-emerald-400'}`}
+                                                                    title={user.role === 'admin' ? "Als User setzen" : "Als Admin setzen"}
+                                                                    style={{ backgroundColor: 'transparent' }}
+                                                                >
+                                                                    {user.role === 'admin' ? <ShieldOff size={16} /> : <Shield size={16} />}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteUser(user.id)}
+                                                                    className="p-1.5 text-red-400 rounded transition-colors"
+                                                                    title="Benutzer löschen"
+                                                                    style={{ backgroundColor: 'transparent' }}
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </>
                                                         )}
-
-                                                        {/* Password Reset */}
                                                         {user.id !== 1 && (
                                                             <button
                                                                 onClick={() => handleAdminResetPassword(user.id)}
-                                                                className="p-2 text-blue-400 hover:bg-blue-900/20 rounded"
-                                                                title="Reset Password"
+                                                                className="p-1.5 text-blue-400 rounded transition-colors"
+                                                                title="Passwort zurücksetzen"
+                                                                style={{ backgroundColor: 'transparent' }}
                                                             >
                                                                 <Key size={16} />
                                                             </button>
                                                         )}
-
-                                                        {/* Delete User */}
-                                                        {user.id !== 1 && user.id !== parseInt((localStorage.getItem('cgt_token') ? JSON.parse(atob(localStorage.getItem('cgt_token')!.split('.')[1])).id : 0)) && (
-                                                            <button
-                                                                onClick={() => handleDeleteUser(user.id)}
-                                                                className="p-2 text-red-400 hover:bg-red-900/20 rounded"
-                                                                title="Delete User"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        )}
-
-                                                        {/* Root Admin Indicator */}
                                                         {user.id === 1 && (
-                                                            <div className="p-2 text-yellow-500" title="Root Admin (Protected)">
+                                                            <div className="p-1.5 text-amber-500 opacity-50 cursor-not-allowed" title="Root Admin (Geschützt)">
                                                                 <Lock size={16} />
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
                                             ))}
-                                            {adminUsers.length === 0 && <p className="text-slate-500 italic">Keine Benutzer geladen.</p>}
+                                            {adminUsers.length === 0 && <p className="text-xs text-slate-500 italic p-2">Keine Benutzer geladen.</p>}
                                         </div>
                                     </div>
                                 )}
                             </div>
                         )}
+
+                        {/* Delete Account Section */}
+                        <div className="border border-red-900/30 rounded-lg overflow-hidden transition-all duration-300 mt-4">
+                            <button
+                                onClick={handleDeleteAccount}
+                                className="w-full flex items-center justify-between p-4 transition-colors hover:bg-red-900/10 group"
+                                style={{ backgroundColor: 'rgba(30, 41, 59, 0.3)' }}
+                            >
+                                <div style={rowStyle} className="text-left">
+                                    <div style={iconContainerStyle}>
+                                        <Trash2 size={20} className="text-red-500 group-hover:text-red-400" />
+                                    </div>
+                                    <div className="text-left">
+                                        <h4 className="font-bold text-red-500 group-hover:text-red-400 text-sm">Account löschen</h4>
+                                        <p className="text-[10px] text-red-300 group-hover:text-red-200">Unwiderruflich</p>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -614,6 +850,6 @@ export const SettingsPage: React.FC = () => {
                     </button>
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
