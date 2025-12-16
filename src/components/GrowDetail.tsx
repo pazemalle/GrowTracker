@@ -193,6 +193,15 @@ export const GrowDetail: React.FC = () => {
         if (stageConfig.dli) setNewLogDli(stageConfig.dli);
         if (stageConfig.ppfd) setNewLogPpfd(stageConfig.ppfd);
         if (stageConfig.lightCycle) setNewLogLightCycle(stageConfig.lightCycle);
+
+        // Auto-calculate PPFD if DLI and LightCycle are available
+        if (stageConfig.dli && stageConfig.lightCycle) {
+            const hours = getHoursFromCycle(stageConfig.lightCycle);
+            if (hours > 0) {
+                const calculated = calculatePPFD(parseFloat(stageConfig.dli.toString()), hours);
+                if (calculated) setNewLogPpfd(calculated);
+            }
+        }
     };
 
     const loadProfileNutrients = () => {
@@ -412,7 +421,51 @@ export const GrowDetail: React.FC = () => {
             }));
     }, [grow.logs, grow.currentStage, profile]);
 
-    // Computed Logs for Display
+    // --- Consumption Stats ---
+    const consumptionStats = useMemo(() => {
+        let totalWater = 0;
+        const nutrientTotals: Record<string, { amount: number, unit: string }> = {};
+
+        grow.logs.forEach(log => {
+            if (log.water) {
+                totalWater += log.water;
+            }
+
+            if (log.nutrients) {
+                log.nutrients.forEach(n => {
+                    // Only sum up if we can calculate a total (ml/L or g/L) AND we have water volume
+                    // OR if it's an absolute value (not handled yet, assuming mostly mix-ins)
+                    // User Request: "ml/L or g/L ... multiplied by water"
+
+                    let addedAmount = 0;
+                    let targetUnit: string = n.unit; // Default to current unit if not convertible
+
+                    // Normalize unit check for backward compatibility (ml/L vs ml/L Wasser)
+                    const unitStr = n.unit as string;
+                    const isMlPerL = unitStr === 'ml/L' || unitStr === 'ml/L Wasser';
+                    const isGPerL = unitStr === 'g/L' || unitStr === 'g/L Wasser';
+
+                    if ((isMlPerL || isGPerL) && log.water) {
+                        addedAmount = n.amount * log.water;
+                        // Convert unit for display
+                        targetUnit = isMlPerL ? 'ml' : 'g';
+                    }
+                    // 'g/L Substrat' is ignored for total consumption
+
+                    if (addedAmount > 0) {
+                        const key = `${n.name}_${targetUnit}`; // Group by Name + Unit
+                        if (!nutrientTotals[key]) {
+                            nutrientTotals[key] = { amount: 0, unit: targetUnit as any };
+                        }
+                        nutrientTotals[key].amount += addedAmount;
+                    }
+                });
+            }
+        });
+
+        return { totalWater, nutrientTotals };
+    }, [grow.logs]);
+
     const displayedLogs = useMemo(() => {
         let logs = [...grow.logs];
 
@@ -594,18 +647,26 @@ export const GrowDetail: React.FC = () => {
     const createCustomNutrient = () => {
         if (!customNutrientName) return;
         const newNutrient: Nutrient = {
-            id: uuidv4(),
+            id: `custom-${Date.now()}`,
             name: customNutrientName,
             type: customNutrientType
         };
-
-        updateGrow({
-            ...grow,
-            customNutrients: [...(grow.customNutrients || []), newNutrient]
-        });
-
+        const updatedCustomNutrients = [...(grow.customNutrients || []), newNutrient];
+        updateGrow({ ...grow, customNutrients: updatedCustomNutrients });
         setCustomNutrientName('');
+        setCustomNutrientType('veg');
         setIsAddingCustomNutrient(false);
+        setSelectedNutrientId(newNutrient.id);
+    };
+
+    const deleteCustomNutrient = (id: string) => {
+        if (confirm(t.common?.deleteConfirm || 'Delete?')) {
+            const updatedCustomNutrients = (grow.customNutrients || []).filter(n => n.id !== id);
+            updateGrow({ ...grow, customNutrients: updatedCustomNutrients });
+            if (selectedNutrientId === id) {
+                setSelectedNutrientId("");
+            }
+        }
     };
 
     // --- New Log Handlers ---
@@ -958,15 +1019,45 @@ export const GrowDetail: React.FC = () => {
                     </div>
 
                     {isAddingCustomNutrient && (
-                        <div className="flex gap-2 items-center bg-slate-900 p-2 rounded">
-                            <input className="input text-sm" placeholder={t.growDetail.nutrientName} value={customNutrientName} onChange={e => setCustomNutrientName(e.target.value)} />
-                            <select className="input text-sm w-32" value={customNutrientType} onChange={e => setCustomNutrientType(e.target.value as any)}>
-                                <option value="veg">Veg</option>
-                                <option value="bloom">Bloom</option>
-                                <option value="booster">Booster</option>
-                                <option value="other">Other</option>
-                            </select>
-                            <button onClick={createCustomNutrient} className="btn btn-primary text-xs p-2"><Plus size={14} /></button>
+                        <div className="bg-slate-900 p-3 rounded space-y-3 mb-2 border border-slate-700">
+                            <div className="flex gap-2 items-center">
+                                <input className="input text-sm flex-1" placeholder={t.growDetail.nutrientName} value={customNutrientName} onChange={e => setCustomNutrientName(e.target.value)} />
+                                <select className="input text-sm w-32" value={customNutrientType} onChange={e => setCustomNutrientType(e.target.value as any)}>
+                                    <option value="veg">Veg</option>
+                                    <option value="bloom">Bloom</option>
+                                    <option value="booster">Booster</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <button onClick={createCustomNutrient} className="btn btn-primary text-xs p-2 h-10 w-10 flex items-center justify-center"><Plus size={16} /></button>
+                            </div>
+
+                            {/* List of Existing Custom Nutrients */}
+                            {grow.customNutrients && grow.customNutrients.length > 0 && (
+                                <div className="space-y-1 pt-2 border-t border-slate-800">
+                                    <p className="text-xs font-bold text-slate-500 uppercase mb-2">{t.growDetail?.customNutrient || 'Custom Nutrients'}</p>
+                                    {grow.customNutrients.map(nut => (
+                                        <div key={nut.id} className="flex justify-between items-center bg-slate-800 px-3 py-2 rounded border border-slate-700/50 hover:border-slate-600 transition-colors">
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${nut.type === 'veg' ? 'bg-emerald-500' :
+                                                    nut.type === 'bloom' ? 'bg-purple-500' :
+                                                        nut.type === 'booster' ? 'bg-amber-500' : 'bg-slate-500'
+                                                    }`}></span>
+                                                <span className="text-sm text-slate-300 font-medium">{nut.name}</span>
+                                                <span className="text-xs text-slate-500 ml-1">({nut.type})</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => deleteCustomNutrient(nut.id)}
+                                                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-700 rounded transition-colors"
+                                                    title={t.common.delete}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -999,9 +1090,9 @@ export const GrowDetail: React.FC = () => {
                             <div className="flex gap-2">
                                 <input className="input flex-1 sm:w-20 text-xs py-1 px-2 h-8" placeholder={t.growDetail.amount} value={nutrientAmount} onChange={e => setNutrientAmount(e.target.value)} type="number" step="0.1" />
                                 <select className="input flex-1 sm:w-24 text-xs py-1 px-2 h-8" value={nutrientUnit} onChange={e => setNutrientUnit(e.target.value as any)}>
-                                    <option value="ml/L">ml/L</option>
-                                    <option value="g/L">g/L</option>
-                                    <option value="g/L Substrat">g/L Sub</option>
+                                    <option value="ml/L Wasser">ml/L Wasser</option>
+                                    <option value="g/L Wasser">g/L Wasser</option>
+                                    <option value="g/L Substrat">g/L Substrat</option>
                                 </select>
                                 <button onClick={() => addNutrientToLog(isEdit)} className="btn btn-secondary p-1 h-8 w-8 flex items-center justify-center shrink-0">
                                     <Plus size={14} />
@@ -1026,13 +1117,23 @@ export const GrowDetail: React.FC = () => {
                                         onChange={e => updateNutrientInLog(idx, 'unit', e.target.value, isEdit)}
                                         className="input w-32 h-8 text-sm py-1 px-2"
                                     >
-                                        <option value="ml/L">ml/L</option>
-                                        <option value="g/L">g/L</option>
-                                        <option value="g/L Substrat">g/L Sub</option>
+                                        <option value="ml/L Wasser">ml/L Wasser</option>
+                                        <option value="g/L Wasser">g/L Wasser</option>
+                                        <option value="g/L Substrat">g/L Substrat</option>
                                     </select>
-                                    <button onClick={() => removeNutrientFromLog(idx, isEdit)} className="p-1.5 text-slate-500 hover:text-red-400 transition-colors ml-auto opacity-70 hover:opacity-100 cursor-pointer" style={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
-                                        <Trash2 size={16} />
-                                    </button>
+                                    <div className="flex items-center gap-1.5 ml-auto">
+                                        {/* Total Calc Display */}
+                                        {((n.unit as string) === 'ml/L' || n.unit === 'ml/L Wasser' || (n.unit as string) === 'g/L' || n.unit === 'g/L Wasser') && (isEdit ? editLogWater : newLogWater) && (
+                                            <span className="text-xs font-mono text-emerald-400 bg-emerald-900/20 px-1.5 py-0.5 rounded border border-emerald-500/20 whitespace-nowrap">
+                                                To: {
+                                                    (n.amount * parseFloat((isEdit ? editLogWater : newLogWater) || '0')).toFixed(1)
+                                                }{((n.unit as string) === 'ml/L' || n.unit === 'ml/L Wasser') ? 'ml' : 'g'}
+                                            </span>
+                                        )}
+                                        <button onClick={() => removeNutrientFromLog(idx, isEdit)} className="p-1.5 text-slate-500 hover:text-red-400 transition-colors opacity-70 hover:opacity-100 cursor-pointer" style={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none' }}>
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -1355,6 +1456,46 @@ export const GrowDetail: React.FC = () => {
             }
 
             {/* Log Editor - Collapsible */}
+
+            {/* Consumption Stats Card */}
+            {(consumptionStats.totalWater > 0 || Object.keys(consumptionStats.nutrientTotals).length > 0) && (
+                <div className="glass-panel p-6 mb-8 border-l-4 border-l-emerald-500 animate-fade-in">
+                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                        <Beaker size={20} className="text-emerald-400" /> {t.growDetail?.consumption || 'Verbrauch'}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Water Total */}
+                        {consumptionStats.totalWater > 0 && (
+                            <div className="bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg flex items-center gap-3">
+                                <div className="p-2 bg-blue-500/20 rounded-full text-blue-400">
+                                    <Droplets size={20} />
+                                </div>
+                                <div>
+                                    <span className="block text-xs text-slate-400 uppercase font-bold">{t.growDetail?.water ? t.growDetail.water.split('(')[0].trim() : 'Wasser'}</span>
+                                    <span className="text-xl font-bold text-blue-300">{consumptionStats.totalWater.toFixed(1)} L</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Nutrient Totals */}
+                        {Object.entries(consumptionStats.nutrientTotals).map(([key, data]) => {
+                            const [name] = key.split('_');
+                            return (
+                                <div key={key} className="bg-purple-900/20 border border-purple-500/30 p-3 rounded-lg flex items-center gap-3">
+                                    <div className="p-2 bg-purple-500/20 rounded-full text-purple-400">
+                                        <Beaker size={20} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <span className="block text-xs text-slate-400 uppercase font-bold truncate" title={name}>{name}</span>
+                                        <span className="text-xl font-bold text-purple-300">{data.amount.toFixed(1)} {data.unit}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             <div className="glass-panel p-4">
                 {!isAddingLog ? (
                     <button
@@ -1592,7 +1733,14 @@ export const GrowDetail: React.FC = () => {
                                             {log.nutrients!.map((n, i) => (
                                                 <div key={i} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded border border-slate-700">
                                                     <span className="text-purple-300 text-sm font-medium">{n.name}</span>
-                                                    <span className="font-mono text-xs text-slate-400 border-l border-slate-600 pl-2">{n.amount}{n.unit}</span>
+                                                    <span className="font-mono text-xs text-slate-400 border-l border-slate-600 pl-2">
+                                                        {n.amount} {n.unit?.split(' ')[0]}
+                                                        {((n.unit as string) === 'ml/L' || n.unit === 'ml/L Wasser' || (n.unit as string) === 'g/L' || n.unit === 'g/L Wasser') && log.water && (
+                                                            <span className="text-slate-500 ml-1">
+                                                                ({(n.amount * log.water).toFixed(1)}{((n.unit as string) === 'ml/L' || n.unit === 'ml/L Wasser') ? 'ml' : 'g'})
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>

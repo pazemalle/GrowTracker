@@ -160,6 +160,7 @@ export const translations = {
             totalDays: 'Tage',
             flowerDays: 'Blütetage',
             flowerWeeks: 'Blütewochen',
+            consumption: 'Verbrauch',
 
             // Predictions
             predictions: {
@@ -437,6 +438,7 @@ export const translations = {
             week: 'Week',
             flowerDays: 'Flower Days',
             flowerWeeks: 'Flower Weeks',
+            consumption: 'Consumption',
             estVegiWeeks: 'Est. Vegi Weeks',
             estFlowerWeeks: 'Est. Flower Weeks',
 

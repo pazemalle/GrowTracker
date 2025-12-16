@@ -169,12 +169,25 @@ export default function SeedBank() {
                     </h1>
                     <p className="text-slate-400 mt-1">{t.seedBank.subtitle}</p>
                 </div>
-                <button
-                    onClick={() => setIsEditing(!isEditing)}
-                    className={`btn ${isEditing ? 'btn-secondary' : 'btn-primary'}`}
-                >
-                    {isEditing ? <><X size={20} /> {t.common.cancel}</> : <><Plus size={20} /> {t.seedBank.addStrain}</>}
-                </button>
+                <div className="flex gap-3">
+                    {!isEditing && seeds.length > 0 && (
+                        <>
+                            <button onClick={handleExportAll} className="btn btn-secondary" title={t.profiles?.export || 'Export All'}>
+                                <Download size={20} /> <span className="hidden sm:inline">{t.profiles?.export || 'Export'}</span>
+                            </button>
+                            <label className="btn btn-secondary cursor-pointer" title={t.profiles?.import || 'Import'}>
+                                <Upload size={20} /> <span className="hidden sm:inline">{t.profiles?.import || 'Import'}</span>
+                                <input type="file" accept=".json" className="hidden" onChange={handleImport} />
+                            </label>
+                        </>
+                    )}
+                    <button
+                        onClick={() => setIsEditing(!isEditing)}
+                        className={`btn ${isEditing ? 'btn-secondary' : 'btn-primary'}`}
+                    >
+                        {isEditing ? <><X size={20} /> {t.common.cancel}</> : <><Plus size={20} /> {t.seedBank.addStrain}</>}
+                    </button>
+                </div>
             </div>
 
             {isEditing && (
@@ -302,18 +315,6 @@ export default function SeedBank() {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <div className="flex justify-end p-4 border-b border-slate-700/50 gap-2">
-                                <button onClick={handleExportAll} className="btn btn-secondary" title={t.profiles?.export || 'Export All'}>
-                                    <Download size={18} /> {t.profiles?.export || 'Export All'}
-                                </button>
-                                <label className="btn btn-secondary cursor-pointer" title={t.profiles?.import || 'Import'}>
-                                    <Upload size={18} /> {t.profiles?.import || 'Import'}
-                                    <input type="file" accept=".json" className="hidden" onChange={handleImport} />
-                                </label>
-                                <button onClick={() => setIsEditing(true)} className="btn btn-primary">
-                                    <Plus size={18} /> {t.seedBank.addStrain}
-                                </button>
-                            </div>
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-slate-700/50 text-xs font-semibold text-slate-400 uppercase tracking-wider bg-slate-900/20">
