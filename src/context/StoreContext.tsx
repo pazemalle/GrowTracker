@@ -19,13 +19,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [notes, setNotes] = useState<Note[]>([]);
     const [isInitialized, setIsInitialized] = useState(false);
 
-    // Get auth state (but only if AuthContext is available)
+    // Get auth state (and logout function)
     let token: string | null = null;
     let isAuthenticated = false;
+    let logout: (() => void) | undefined;
+    let isLoggingOut = false;
+
     try {
         const auth = useAuth();
         token = auth.token;
         isAuthenticated = auth.isAuthenticated;
+        logout = auth.logout;
+        isLoggingOut = auth.isLoggingOut;
     } catch {
         // AuthContext not available, continue in guest mode
     }
@@ -54,11 +59,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setIsInitialized(true);
     }, [isAuthenticated]);
 
+    // State to track if we have successfully loaded data from server at least once
+    const [isServerDataLoaded, setIsServerDataLoaded] = useState(false);
+
     // Fetch data from server when user logs in
     useEffect(() => {
         if (!isInitialized || !isAuthenticated || !token) return;
 
         const fetchServerData = async () => {
+            console.log('[StoreContext] Fetching server data...');
             try {
                 const response = await fetch(`${API_URL}/data`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -66,35 +75,53 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
                 if (response.ok) {
                     const serverData = await response.json();
+                    console.log('[StoreContext] Server data loaded:', serverData);
+
+                    // Only update state if data exists, or if we want to trust the server's "empty" state.
+                    // If server returns empty properties, it means clean state.
                     if (serverData.grows) setGrows(serverData.grows);
                     if (serverData.profiles) setProfiles(serverData.profiles);
                     if (serverData.setups) setSetups(serverData.setups);
                     if (serverData.seeds) setSeeds(serverData.seeds);
                     if (serverData.notes) setNotes(serverData.notes);
+
+                    setIsServerDataLoaded(true);
+                } else {
+                    console.error('[StoreContext] Failed to fetch server data:', response.status);
+
+                    if (response.status === 401 && logout) {
+                        console.warn('[StoreContext] Token expired or invalid. Logging out.');
+                        logout();
+                    }
                 }
             } catch (error) {
-                console.error('Failed to fetch server data:', error);
+                console.error('[StoreContext] Error fetching server data:', error);
             }
         };
 
         fetchServerData();
-    }, [isAuthenticated, token, isInitialized]);
+    }, [isAuthenticated, token, isInitialized, logout]);
 
     // Save to LocalStorage (Guest Mode)
     useEffect(() => {
-        if (!isInitialized || isAuthenticated) return;
+        // Only save to LS if NOT authenticated
+        // BLOCK SAVE if we are in the process of logging out to prevent leaking user data to guest mode
+        if (!isInitialized || isAuthenticated || isLoggingOut) return;
         localStorage.setItem(STORAGE_KEY_GROWS, JSON.stringify(grows));
         localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(profiles));
         localStorage.setItem(STORAGE_KEY_SETUPS, JSON.stringify(setups));
         localStorage.setItem(STORAGE_KEY_SEEDS, JSON.stringify(seeds));
         localStorage.setItem(STORAGE_KEY_NOTES, JSON.stringify(notes));
-    }, [grows, profiles, setups, seeds, notes, isInitialized, isAuthenticated]);
+    }, [grows, profiles, setups, seeds, notes, isInitialized, isAuthenticated, isLoggingOut]);
 
     // Sync to Server (Authenticated Mode)
     useEffect(() => {
-        if (!isInitialized || !isAuthenticated || !token) return;
+        // Critical: Do NOT sync if we haven't successfully loaded server data yet.
+        // This prevents overwriting server data with empty initial state on reload.
+        if (!isInitialized || !isAuthenticated || !token || !isServerDataLoaded) return;
 
         const syncToServer = async () => {
+            console.log('[StoreContext] Syncing to server...');
             try {
                 await fetch(`${API_URL}/data`, {
                     method: 'POST',
@@ -104,15 +131,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                     },
                     body: JSON.stringify({ grows, profiles, setups, seeds, notes })
                 });
-                console.log('Synced to server');
+                console.log('[StoreContext] Synced successfully');
             } catch (error) {
-                console.error('Failed to sync to server:', error);
+                console.error('[StoreContext] Failed to sync to server:', error);
             }
         };
 
         const timeoutId = setTimeout(syncToServer, 1000);
         return () => clearTimeout(timeoutId);
-    }, [grows, profiles, setups, seeds, notes, isAuthenticated, token, isInitialized]);
+    }, [grows, profiles, setups, seeds, notes, isAuthenticated, token, isInitialized, isServerDataLoaded]);
 
     const addGrow = (grow: Grow) => setGrows((prev) => [...prev, grow]);
     const updateGrow = (u: Grow) => setGrows((prev) => prev.map((g) => (g.id === u.id ? u : g)));

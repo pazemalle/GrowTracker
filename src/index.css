@@ -1260,4 +1260,20 @@ button {
     padding-bottom: 0;
     width: auto;
   }
-}
+}/* Custom Utility Overrides for Dark Mode */
+.bg-emerald-600 { background-color: #059669 !important; }
+.bg-purple-600 { background-color: #9333ea !important; }
+.bg-blue-600 { background-color: #2563eb !important; }
+.bg-slate-900 { background-color: #0f172a !important; }
+.bg-slate-800 { background-color: #1e293b !important; }
+.bg-slate-900\/50 { background-color: rgba(15, 23, 42, 0.5) !important; }
+.bg-slate-800\/40 { background-color: rgba(30, 41, 59, 0.4) !important; }
+.text-white { color: #ffffff !important; }
+.text-slate-400 { color: #94a3b8 !important; }
+
+/* Hover States */
+.hover\:bg-emerald-500:hover { background-color: #10b981 !important; }
+.hover\:bg-purple-500:hover { background-color: #a855f7 !important; }
+.hover\:bg-blue-500:hover { background-color: #3b82f6 !important; }
+.hover\:text-white:hover { color: #ffffff !important; }
+

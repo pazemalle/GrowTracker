@@ -8,7 +8,7 @@ import { format, addDays, differenceInDays } from 'date-fns';
 import {
     Calendar, Camera, Save, Share2,
     Download, Trash2, Edit2, X, Droplets, Thermometer, Sun, Beaker, Plus, Wind,
-    AlertCircle, ArrowUpDown, Hexagon, ChevronDown
+    AlertCircle, ArrowUpDown, Hexagon, ChevronDown, Zap, Activity
 } from 'lucide-react';
 
 const calculateVPD = (temp: number, humidity: number): string => {
@@ -74,6 +74,8 @@ export const GrowDetail: React.FC = () => {
     const [editLogVpd, setEditLogVpd] = useState<string>('');
     const [editLogDli, setEditLogDli] = useState<string>('');
     const [editLogPpfd, setEditLogPpfd] = useState<string>('');
+    const [editLogEc, setEditLogEc] = useState<string>('');
+    const [editLogPh, setEditLogPh] = useState<string>('');
     const [editLogLightCycle, setEditLogLightCycle] = useState<string>('');
     const [editLogNutrients, setEditLogNutrients] = useState<NutrientEntry[]>([]);
     const [editLogImages, setEditLogImages] = useState<string[]>([]);
@@ -96,6 +98,8 @@ export const GrowDetail: React.FC = () => {
     const [newLogVpd, setNewLogVpd] = useState<string>('');
     const [newLogDli, setNewLogDli] = useState<string>('');
     const [newLogPpfd, setNewLogPpfd] = useState<string>('');
+    const [newLogEc, setNewLogEc] = useState<string>('');
+    const [newLogPh, setNewLogPh] = useState<string>('');
     const [newLogLightCycle, setNewLogLightCycle] = useState<string>('');
     const [newLogNutrients, setNewLogNutrients] = useState<NutrientEntry[]>([]);
 
@@ -120,7 +124,9 @@ export const GrowDetail: React.FC = () => {
     const availableNutrients = useMemo(() => {
         const profileNutrients = profile?.nutrients || [];
         const customNutrients = grow.customNutrients || [];
-        return [...profileNutrients, ...customNutrients].sort((a, b) => a.name.localeCompare(b.name));
+        return [...profileNutrients, ...customNutrients]
+            .filter(n => n && n.name) // Filter out null/undefined or missing names
+            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }, [profile, grow.customNutrients]);
 
     // Auto-calculate Day when Date changes
@@ -182,33 +188,104 @@ export const GrowDetail: React.FC = () => {
     //     }
     // }, [newLogStage, profile]); 
 
-    const loadProfileEnvironment = () => {
-        if (!profile || !newLogStage) return;
-        const stageConfig = profile.stages?.[newLogStage];
-        if (!stageConfig) return;
+    // Helper to resolve the correct WeekConfig or StageConfig based on stage and date
+    const getProfileConfigForStage = (stage: Stage, date: string, day: number) => {
+        if (!profile || !stage) return null;
 
-        if (stageConfig.temp) setNewLogTemp(stageConfig.temp);
-        if (stageConfig.humidity) setNewLogHumidity(stageConfig.humidity);
-        if (stageConfig.vpd) setNewLogVpd(stageConfig.vpd);
-        if (stageConfig.dli) setNewLogDli(stageConfig.dli);
-        if (stageConfig.ppfd) setNewLogPpfd(stageConfig.ppfd);
-        if (stageConfig.lightCycle) setNewLogLightCycle(stageConfig.lightCycle);
+        // Try Week-based first
+        if (profile.phases && (stage === 'vegetation' || stage === 'flowering' || stage === 'drying')) {
+            const phase = profile.phases[stage];
+            if (phase && phase.weeks.length > 0) {
+                let weekIndex = 0;
+                if (stage === 'vegetation') {
+                    weekIndex = Math.ceil((day || 1) / 7) - 1;
+                } else if (stage === 'flowering') {
+                    const targetDate = new Date(date);
+                    const flowerStart = grow.logs.find(l => l.stage === 'flowering')?.date;
+                    if (flowerStart) {
+                        const diff = differenceInDays(targetDate, new Date(flowerStart));
+                        const d = diff >= 0 ? diff + 1 : 1;
+                        weekIndex = Math.ceil(d / 7) - 1;
+                    } else {
+                        weekIndex = 0;
+                    }
+                } else if (stage === 'drying') {
+                    const targetDate = new Date(date);
+                    const dryingStart = grow.logs.find(l => l.stage === 'drying')?.date;
+                    if (dryingStart) {
+                        const diff = differenceInDays(targetDate, new Date(dryingStart));
+                        const d = diff >= 0 ? diff + 1 : 1;
+                        weekIndex = Math.ceil(d / 7) - 1;
+                    } else {
+                        weekIndex = 0;
+                    }
+                }
+
+                if (weekIndex < 0) weekIndex = 0;
+                if (weekIndex >= phase.weeks.length) weekIndex = phase.weeks.length - 1;
+                return phase.weeks[weekIndex];
+            }
+        }
+
+        // Fallback to legacy stages
+        if (profile.stages) {
+            return profile.stages[stage];
+        }
+
+        return null;
+    };
+
+    const loadProfileEnvironment = (isEdit: boolean = false) => {
+        const stage = isEdit ? editLogStage : newLogStage;
+        const date = isEdit ? editLogDate : newLogDate;
+        const day = isEdit ? editLogDay : newLogDay;
+
+        const config = getProfileConfigForStage(stage, date, day);
+        if (!config) return;
+
+        if (isEdit) {
+            if (config.temp) setEditLogTemp(config.temp);
+            if (config.humidity) setEditLogHumidity(config.humidity);
+            if (config.vpd) setEditLogVpd(config.vpd);
+            if (config.dli) setEditLogDli(config.dli);
+            if (config.ppfd) setEditLogPpfd(config.ppfd);
+            if (config.lightCycle) setEditLogLightCycle(config.lightCycle);
+            if (config.ec) setEditLogEc(config.ec || '');
+            if (config.ph) setEditLogPh(config.ph || '');
+        } else {
+            if (config.temp) setNewLogTemp(config.temp);
+            if (config.humidity) setNewLogHumidity(config.humidity);
+            if (config.vpd) setNewLogVpd(config.vpd);
+            if (config.dli) setNewLogDli(config.dli);
+            if (config.ppfd) setNewLogPpfd(config.ppfd);
+            if (config.lightCycle) setNewLogLightCycle(config.lightCycle);
+            if (config.ec) setNewLogEc(config.ec || '');
+            if (config.ph) setNewLogPh(config.ph || '');
+        }
 
         // Auto-calculate PPFD if DLI and LightCycle are available
-        if (stageConfig.dli && stageConfig.lightCycle) {
-            const hours = getHoursFromCycle(stageConfig.lightCycle);
+        if (config.dli && config.lightCycle) {
+            const hours = getHoursFromCycle(config.lightCycle);
             if (hours > 0) {
-                const calculated = calculatePPFD(parseFloat(stageConfig.dli.toString()), hours);
-                if (calculated) setNewLogPpfd(calculated);
+                const calculated = calculatePPFD(parseFloat(config.dli.toString()), hours);
+                if (calculated) {
+                    if (isEdit) setEditLogPpfd(calculated);
+                    else setNewLogPpfd(calculated);
+                }
             }
         }
     };
 
-    const loadProfileNutrients = () => {
-        if (!profile || !newLogStage) return;
-        const stageConfig = profile.stages?.[newLogStage];
-        if (stageConfig?.nutrients?.length > 0) {
-            setNewLogNutrients(stageConfig.nutrients);
+    const loadProfileNutrients = (isEdit: boolean = false) => {
+        const stage = isEdit ? editLogStage : newLogStage;
+        const date = isEdit ? editLogDate : newLogDate;
+        const day = isEdit ? editLogDay : newLogDay;
+
+        const config = getProfileConfigForStage(stage, date, day);
+
+        if (config?.nutrients?.length > 0) {
+            if (isEdit) setEditLogNutrients(config.nutrients);
+            else setNewLogNutrients(config.nutrients);
         }
     };
 
@@ -370,7 +447,8 @@ export const GrowDetail: React.FC = () => {
         const referenceDate = lastLog ? new Date(lastLog.date) : new Date();
 
         // Vegi End
-        const vegiEndDate = addDays(startDate, profile.vegiDurationWeeks * 7);
+        const vegiWeeks = profile?.vegiDurationWeeks || 4;
+        const vegiEndDate = addDays(startDate, vegiWeeks * 7);
         events.push({
             date: vegiEndDate,
             title: t.growDetail.predictions.switchToFlower,
@@ -379,7 +457,8 @@ export const GrowDetail: React.FC = () => {
         });
 
         // Harvest Window
-        const harvestDate = addDays(vegiEndDate, profile.flowerDurationWeeks * 7);
+        const flowerWeeks = profile?.flowerDurationWeeks || 9;
+        const harvestDate = addDays(vegiEndDate, flowerWeeks * 7);
         events.push({
             date: harvestDate,
             title: t.growDetail.predictions.estimatedHarvest,
@@ -556,6 +635,8 @@ export const GrowDetail: React.FC = () => {
         setEditLogVpd(log.environment?.vpd?.toString() || '');
         setEditLogDli(log.environment?.dli?.toString() || '');
         setEditLogPpfd(log.environment?.ppfd?.toString() || '');
+        setEditLogEc(log.ec?.toString() || log.environment?.ec?.toString() || '');
+        setEditLogPh(log.ph?.toString() || log.environment?.ph?.toString() || '');
         setEditLogLightCycle(log.environment?.lightCycle || '');
         setEditLogNutrients(log.nutrients || []);
         setEditLogImages(log.images || []);
@@ -576,13 +657,18 @@ export const GrowDetail: React.FC = () => {
                     stage: editLogStage,
                     day: editLogDay,
                     water: editLogWater ? parseFloat(editLogWater) : undefined,
+
+                    ec: editLogEc ? parseFloat(editLogEc) : undefined,
+                    ph: editLogPh ? parseFloat(editLogPh) : undefined,
                     environment: {
                         temp: editLogTemp ? parseFloat(editLogTemp) : undefined,
                         humidity: editLogHumidity ? parseFloat(editLogHumidity) : undefined,
                         vpd: editLogVpd ? parseFloat(editLogVpd) : undefined,
                         dli: editLogDli ? parseFloat(editLogDli) : undefined,
                         ppfd: editLogPpfd ? parseFloat(editLogPpfd) : undefined,
-                        lightCycle: editLogLightCycle
+                        lightCycle: editLogLightCycle,
+                        ec: editLogEc ? parseFloat(editLogEc) : undefined,
+                        ph: editLogPh ? parseFloat(editLogPh) : undefined
                     },
                     nutrients: editLogNutrients,
                     images: editLogImages
@@ -660,7 +746,7 @@ export const GrowDetail: React.FC = () => {
     };
 
     const deleteCustomNutrient = (id: string) => {
-        if (confirm(t.common?.deleteConfirm || 'Delete?')) {
+        if (confirm(t.common?.confirm || 'Delete?')) {
             const updatedCustomNutrients = (grow.customNutrients || []).filter(n => n.id !== id);
             updateGrow({ ...grow, customNutrients: updatedCustomNutrients });
             if (selectedNutrientId === id) {
@@ -685,6 +771,8 @@ export const GrowDetail: React.FC = () => {
             images: newLogImages,
             tags: [],
             water: newLogWater ? parseFloat(newLogWater) : undefined,
+            ec: newLogEc ? parseFloat(newLogEc) : undefined,
+            ph: newLogPh ? parseFloat(newLogPh) : undefined,
             environment: {
                 temp: newLogTemp ? parseFloat(newLogTemp) : undefined,
                 humidity: newLogHumidity ? parseFloat(newLogHumidity) : undefined,
@@ -707,6 +795,8 @@ export const GrowDetail: React.FC = () => {
         setNewLogImages([]);
         setNewLogStage(grow.currentStage);
         setNewLogWater('');
+        setNewLogEc('');
+        setNewLogPh('');
         setNewLogTemp('');
         setNewLogHumidity('');
         setNewLogVpd('');
@@ -853,7 +943,11 @@ export const GrowDetail: React.FC = () => {
         const vpd = isEdit ? editLogVpd : newLogVpd;
         const setVpd = isEdit ? setEditLogVpd : setNewLogVpd;
         const dli = isEdit ? editLogDli : newLogDli;
-        // const setDli = isEdit ? setEditLogDli : setNewLogDli; // Replaced by specific handlers
+        const setDli = isEdit ? setEditLogDli : setNewLogDli; // Replaced by specific handlers
+        const ec = isEdit ? editLogEc : newLogEc;
+        const setEc = isEdit ? setEditLogEc : setNewLogEc;
+        const ph = isEdit ? editLogPh : newLogPh;
+        const setPh = isEdit ? setEditLogPh : setNewLogPh;
         const ppfd = isEdit ? editLogPpfd : newLogPpfd;
         // const setPpfd = isEdit ? setEditLogPpfd : setNewLogPpfd; // Replaced by specific handlers
         const lightCycle = isEdit ? editLogLightCycle : newLogLightCycle;
@@ -871,14 +965,14 @@ export const GrowDetail: React.FC = () => {
                 <div className="bg-slate-800/50 p-2 rounded-lg space-y-2 border border-slate-700">
                     {/* Title (Full Width) */}
                     <div>
-                        <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail.title}</label>
+                        <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail?.title || 'Title'}</label>
                         <input
                             className="input font-bold w-full p-1.5 text-sm h-8 bg-slate-900 border-slate-700"
                             style={{
                                 borderColor: showValidation && !title ? '#ef4444' : undefined,
                                 boxShadow: showValidation && !title ? '0 0 0 1px #ef4444' : undefined
                             }}
-                            placeholder={`${t.growDetail.titlePlaceholder} *`}
+                            placeholder={`${t.growDetail?.titlePlaceholder || 'Title'} *`}
                             value={title}
                             onChange={e => {
                                 setTitle(e.target.value);
@@ -892,7 +986,7 @@ export const GrowDetail: React.FC = () => {
                     <div className="grid grid-cols-3 gap-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
                         {/* Date */}
                         <div>
-                            <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail.date}</label>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail?.date || 'Date'}</label>
                             <input
                                 type="date"
                                 className="input w-full p-1.5 text-sm h-8 bg-slate-900 border-slate-700"
@@ -903,11 +997,11 @@ export const GrowDetail: React.FC = () => {
 
                         {/* Day */}
                         <div>
-                            <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail.day}</label>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail?.day || 'Day'}</label>
                             <input
                                 type="number"
                                 className="input w-full p-1.5 text-sm h-8 bg-slate-900 border-slate-700"
-                                placeholder={t.growDetail.manualDay}
+                                placeholder={t.growDetail?.manualDay || 'Day (Manual)'}
                                 value={day}
                                 onChange={e => setDay(parseInt(e.target.value))}
                             />
@@ -915,7 +1009,7 @@ export const GrowDetail: React.FC = () => {
 
                         {/* Stage */}
                         <div>
-                            <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail.stage}</label>
+                            <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail?.stage || 'Stage'}</label>
                             <div className="relative">
                                 <select
                                     className="input w-full p-1.5 text-sm h-8 bg-slate-900 border-slate-700 appearance-none"
@@ -924,7 +1018,7 @@ export const GrowDetail: React.FC = () => {
                                 >
                                     {stages.map(s => (
                                         <option key={s} value={s}>
-                                            {t.profiles.stages[s] || s}
+                                            {t.profiles?.stages?.[s] || s}
                                         </option>
                                     ))}
                                 </select>
@@ -938,11 +1032,11 @@ export const GrowDetail: React.FC = () => {
                 <div className="bg-slate-800/50 p-2 rounded-lg space-y-2 border border-slate-700">
                     <div className="flex items-center gap-3 mb-1">
                         <h4 className="font-bold text-emerald-400 flex items-center gap-2 text-xs">
-                            <Thermometer size={14} /> {t.growDetail.environment}
+                            <Thermometer size={14} /> {t.growDetail?.environment || 'Environment'}
                         </h4>
                         {profile && (
                             <button
-                                onClick={loadProfileEnvironment}
+                                onClick={() => loadProfileEnvironment(isEdit)}
                                 className="text-xs text-white/70 hover:text-white hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 transition-colors"
                                 title="Load from Profile"
                                 style={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none', color: 'rgba(255,255,255,0.7)' }}
@@ -954,34 +1048,34 @@ export const GrowDetail: React.FC = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                         {/* Water input moved to Nutrients section */}
                         <div>
-                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.temp}>{t.growDetail.temp}</label>
-                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="24.0" value={temp} onChange={e => setTemp(e.target.value)} type="number" step="0.1" title={t.growDetail.temp} />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail?.temp || 'Temp'}>{t.growDetail?.temp || 'Temp'}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="24.0" value={temp} onChange={e => setTemp(e.target.value)} type="number" step="0.1" title={t.growDetail?.temp || 'Temp'} />
                         </div>
                         <div>
-                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.humidity}>{t.growDetail.humidity}</label>
-                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="60" value={humidity} onChange={e => setHumidity(e.target.value)} type="number" title={t.growDetail.humidity} />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail?.humidity || 'Humidity'}>{t.growDetail?.humidity || 'Humidity'}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="60" value={humidity} onChange={e => setHumidity(e.target.value)} type="number" title={t.growDetail?.humidity || 'Humidity'} />
                         </div>
                         <div>
-                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.vpd}>{t.growDetail.vpd}</label>
-                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="1.0" value={vpd} onChange={e => setVpd(e.target.value)} type="number" step="0.1" title={t.growDetail.vpd} />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail?.vpd || 'VPD'}>{t.growDetail?.vpd || 'VPD'}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="1.0" value={vpd} onChange={e => setVpd(e.target.value)} type="number" step="0.1" title={t.growDetail?.vpd || 'VPD'} />
                         </div>
                         <div>
-                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.dli}>{t.growDetail.dli}</label>
-                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="40" value={dli} onChange={e => handleDliChange(e.target.value)} type="number" step="0.1" title={t.growDetail.dli} />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail?.dli || 'DLI'}>{t.growDetail?.dli || 'DLI'}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="40" value={dli} onChange={e => handleDliChange(e.target.value)} type="number" step="0.1" title={t.growDetail?.dli || 'DLI'} />
                         </div>
                         <div>
-                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.ppfd}>{t.growDetail.ppfd}</label>
-                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="800" value={ppfd} onChange={e => handlePpfdChange(e.target.value)} type="number" title={t.growDetail.ppfd} />
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail?.ppfd || 'PPFD'}>{t.growDetail?.ppfd || 'PPFD'}</label>
+                            <input className="input text-xs py-1 px-2 h-8 w-full" placeholder="800" value={ppfd} onChange={e => handlePpfdChange(e.target.value)} type="number" title={t.growDetail?.ppfd || 'PPFD'} />
                         </div>
                         <div>
-                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail.lightCycle}>{t.growDetail.lightCycle}</label>
+                            <label className="text-[10px] text-slate-400 block mb-0.5 truncate" title={t.growDetail?.lightCycle || 'Light Cycle'}>{t.growDetail?.lightCycle || 'Light Cycle'}</label>
                             <input
                                 className="input text-xs py-1 px-2 h-8 w-full"
                                 placeholder="18/6"
                                 value={lightCycle}
                                 onChange={e => handleLightCycleChange(e.target.value)}
                                 list="light-cycles"
-                                title={t.growDetail.lightCycle}
+                                title={t.growDetail?.lightCycle || 'Light Cycle'}
                             />
                             <datalist id="light-cycles">
                                 <option value="12/12" />
@@ -998,11 +1092,11 @@ export const GrowDetail: React.FC = () => {
                     <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
                             <h4 className="font-bold text-purple-400 flex items-center gap-2 text-xs">
-                                <Beaker size={14} /> {t.growDetail.nutrients}
+                                <Beaker size={14} /> {t.growDetail?.nutrients || 'Nutrients'}
                             </h4>
                             {profile && (
                                 <button
-                                    onClick={loadProfileNutrients}
+                                    onClick={() => loadProfileNutrients(isEdit)}
                                     className="text-xs text-white/70 hover:text-white hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 transition-colors"
                                     title="Load from Profile"
                                     style={{ backgroundColor: 'transparent', border: 'none', boxShadow: 'none', color: 'rgba(255,255,255,0.7)' }}
@@ -1063,19 +1157,52 @@ export const GrowDetail: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-2 mb-2">
                         {/* Water Input - span 4 */}
-                        <div className="md:col-span-4 flex items-center gap-2 bg-blue-900/10 p-1.5 rounded border border-blue-500/20 h-auto min-h-[2.5rem]">
-                            <span className="text-xs text-slate-400 w-12">{t.growDetail.water}</span>
-                            <div className="flex items-center gap-2 flex-1">
-                                <Droplets size={14} className="text-blue-400" />
-                                <input
-                                    className="input flex-1 text-xs py-1 px-2 h-8"
-                                    placeholder="0.0"
-                                    value={water}
-                                    onChange={e => setWater(e.target.value)}
-                                    type="number"
-                                    step="0.1"
-                                />
-                                <span className="text-xs text-slate-500">L</span>
+
+                        <div className="md:col-span-4 flex items-center gap-2">
+                            <div className="flex items-center gap-2 bg-blue-900/10 p-1.5 rounded border border-blue-500/20 h-auto min-h-[2.5rem] flex-1">
+                                <span className="text-xs text-slate-400 w-8">{t.growDetail?.water || 'Water'}</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                    <Droplets size={14} className="text-blue-400" />
+                                    <input
+                                        className="input flex-1 text-xs py-1 px-1 h-8 min-w-0"
+                                        placeholder="0.0"
+                                        value={water}
+                                        onChange={e => setWater(e.target.value)}
+                                        type="number"
+                                        step="0.1"
+                                    />
+                                    <span className="text-xs text-slate-500">L</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 bg-yellow-900/10 p-1.5 rounded border border-yellow-500/20 h-auto min-h-[2.5rem] flex-1">
+                                <span className="text-xs text-slate-400 w-8">EC</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                    <Zap size={14} className="text-yellow-400" />
+                                    <input
+                                        className="input flex-1 text-xs py-1 px-1 h-8 min-w-0"
+                                        placeholder="1.2"
+                                        value={ec}
+                                        onChange={e => setEc(e.target.value)}
+                                        type="number"
+                                        step="0.1"
+                                    />
+                                    <span className="text-xs text-slate-500">dS/m</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 bg-teal-900/10 p-1.5 rounded border border-teal-500/20 h-auto min-h-[2.5rem] flex-1">
+                                <span className="text-xs text-slate-400 w-8">pH</span>
+                                <div className="flex items-center gap-1 flex-1">
+                                    <Activity size={14} className="text-teal-400" />
+                                    <input
+                                        className="input flex-1 text-xs py-1 px-1 h-8 min-w-0"
+                                        placeholder="6.2"
+                                        value={ph}
+                                        onChange={e => setPh(e.target.value)}
+                                        type="number"
+                                        step="0.1"
+                                    />
+                                    <span className="text-xs text-slate-500">pH</span>
+                                </div>
                             </div>
                         </div>
 
@@ -1272,7 +1399,7 @@ export const GrowDetail: React.FC = () => {
                                 {/* Total Count Fallback */}
                                 {editStrainDistribution.length === 0 && (
                                     <div className="flex items-center gap-2">
-                                        <span className="text-xs text-slate-500 whitespace-nowrap">{t.newGrow.plantCount}:</span>
+                                        <span className="text-xs text-slate-500 whitespace-nowrap">{t.newGrow?.plantCount || 'Plant Count'}:</span>
                                         <input
                                             className="input text-sm"
                                             type="number"
@@ -1284,10 +1411,10 @@ export const GrowDetail: React.FC = () => {
                             </div>
                             <div className="flex justify-end gap-2">
                                 <button onClick={() => setIsEditingGrow(false)} className="btn btn-secondary text-sm">
-                                    {t.common.cancel}
+                                    {t.common?.cancel || 'Cancel'}
                                 </button>
                                 <button onClick={saveEditGrow} className="btn btn-primary text-sm">
-                                    <Save size={16} /> {t.common.saveChanges}
+                                    <Save size={16} /> {t.common?.saveChanges || 'Save'}
                                 </button>
 
                             </div>
@@ -1304,7 +1431,7 @@ export const GrowDetail: React.FC = () => {
                                 </button>
                             </div>
                             <p className="text-slate-400 flex items-center gap-2 mb-2">
-                                <Calendar size={14} /> {t.dashboard.started} {format(new Date(grow.startDate), 'MMMM do, yyyy')}
+                                <Calendar size={14} /> {t.dashboard?.started || 'Started'} {format(new Date(grow.startDate), 'MMMM do, yyyy')}
                                 {profile && <span className="text-emerald-500">• {profile.name}</span>}
                             </p>
 
@@ -1317,13 +1444,13 @@ export const GrowDetail: React.FC = () => {
                                             key={s.id}
                                             className="text-sm text-slate-300 flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded border border-slate-600/50 cursor-help transition-colors hover:bg-slate-700"
                                             title={[
-                                                `${t.setupManager.setupName}: ${s.name}`,
-                                                s.tent ? `${t.setupManager.tent}: ${s.tent}` : null,
-                                                s.lights ? `${t.setupManager.lights}: ${s.lights}` : null,
-                                                s.exhaust ? `${t.setupManager.exhaust}: ${s.exhaust}` : null,
-                                                s.filter ? `${t.setupManager.filter}: ${s.filter}` : null,
-                                                s.circulation ? `${t.setupManager.circulation}: ${s.circulation}` : null,
-                                                s.notes ? `${t.setupManager.notes}: ${s.notes}` : null
+                                                `${t.setupManager?.setupName || 'Name'}: ${s.name}`,
+                                                s.tent ? `${t.setupManager?.tent || 'Tent'}: ${s.tent}` : null,
+                                                s.lights ? `${t.setupManager?.lights || 'Light'}: ${s.lights}` : null,
+                                                s.exhaust ? `${t.setupManager?.exhaust || 'Exhaust'}: ${s.exhaust}` : null,
+                                                s.filter ? `${t.setupManager?.filter || 'Filter'}: ${s.filter}` : null,
+                                                s.circulation ? `${t.setupManager?.circulation || 'Fan'}: ${s.circulation}` : null,
+                                                s.notes ? `${t.setupManager?.notes || 'Note'}: ${s.notes}` : null
                                             ].filter(Boolean).join('\n')}
                                         >
                                             <Hexagon size={12} className="text-emerald-500" />
@@ -1362,10 +1489,10 @@ export const GrowDetail: React.FC = () => {
                 </div>
                 {!isEditingGrow && (
                     <div className="flex gap-2">
-                        <button onClick={handleExportProject} className="btn btn-secondary" title={t.growDetail.export}>
-                            <Download size={18} /> {t.growDetail.export}
+                        <button onClick={handleExportProject} className="btn btn-secondary" title={t.growDetail?.export || 'Export'}>
+                            <Download size={18} /> {t.growDetail?.export || 'Export'}
                         </button>
-                        <button onClick={handleDeleteGrow} className="btn btn-secondary text-red-400 hover:text-red-300 hover:bg-red-900/20 hover:border-red-900/50" title={t.growDetail.delete}>
+                        <button onClick={handleDeleteGrow} className="btn btn-secondary text-red-400 hover:text-red-300 hover:bg-red-900/20 hover:border-red-900/50" title={t.growDetail?.delete || 'Delete'}>
                             <Trash2 size={18} />
                         </button>
                     </div>
@@ -1375,10 +1502,10 @@ export const GrowDetail: React.FC = () => {
             {/* Stats Badges - Dashboard Style */}
             <div className="flex flex-wrap gap-2 mb-4">
                 <div className="px-3 py-1 rounded-md text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-2 shadow-sm">
-                    <span>⏱️ {daysSinceStart} {t.growDetail.totalDays}</span>
+                    <span>⏱️ {daysSinceStart} {t.growDetail?.totalDays || 'Days'}</span>
                 </div>
                 <div className="px-3 py-1 rounded-md text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-2 shadow-sm">
-                    <span>📆 {weeksSinceStart} {t.growDetail.weeks}</span>
+                    <span>📆 {weeksSinceStart} {t.growDetail?.weeks || 'Weeks'}</span>
                 </div>
 
                 {/* Flower Stats (Only visible if flowering started) */}
@@ -1507,9 +1634,12 @@ export const GrowDetail: React.FC = () => {
                 ) : (
                     <>
                         <div className="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
-                            <h3 className="text-lg font-bold text-white">{t.growDetail.newLogEntry}</h3>
-                            <button onClick={() => setIsAddingLog(false)} className="text-slate-500 hover:text-white">
-                                <X size={20} />
+                            <h3 className="text-lg font-bold text-white">{t.growDetail?.newLogEntry || 'New Log Entry'}</h3>
+                            <button
+                                onClick={() => setIsAddingLog(false)}
+                                className="p-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors border border-slate-700 hover:border-slate-600"
+                            >
+                                <X size={18} />
                             </button>
                         </div>
 
@@ -1517,7 +1647,7 @@ export const GrowDetail: React.FC = () => {
 
                         <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-700">
                             <label className="btn btn-secondary cursor-pointer text-sm py-1.5">
-                                <Camera size={16} /> {t.growDetail.addPhotos}
+                                <Camera size={16} /> {t.growDetail?.addPhotos || 'Add Photos'}
                                 <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
                             </label>
                             <div className="flex gap-2">
@@ -1525,7 +1655,7 @@ export const GrowDetail: React.FC = () => {
                                     {t.common.cancel}
                                 </button>
                                 <button onClick={handleAddLog} className="btn btn-primary bg-emerald-500 hover:bg-emerald-600 text-sm py-1.5">
-                                    <Save size={18} /> {t.growDetail.saveEntry}
+                                    <Save size={18} /> {t.growDetail?.saveEntry || 'Save'}
                                 </button>
                             </div>
                         </div>
@@ -1545,9 +1675,9 @@ export const GrowDetail: React.FC = () => {
             <div className="space-y-6">
                 <div className="flex flex-wrap justify-between items-center gap-4">
                     <div className="flex items-center gap-2">
-                        <h3 className="text-xl font-bold text-white">{t.growDetail.logHistory}</h3>
-                        <button onClick={handleExportAllLogsForum} className="bg-slate-800 border border-slate-700 hover:bg-emerald-900/30 text-slate-300 hover:text-emerald-400 px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors" title={t.growDetail.copyAllForForum}>
-                            <Share2 size={12} /> {t.growDetail.copyAllForForum}
+                        <h3 className="text-xl font-bold text-white">{t.growDetail?.logHistory || 'History'}</h3>
+                        <button onClick={handleExportAllLogsForum} className="bg-slate-800 border border-slate-700 hover:bg-emerald-900/30 text-slate-300 hover:text-emerald-400 px-2 py-1 rounded text-xs flex items-center gap-1 transition-colors" title={t.growDetail?.copyAllForForum || 'Copy All'}>
+                            <Share2 size={12} /> {t.growDetail?.copyAllForForum || 'Copy All'}
                         </button>
                     </div>
 
@@ -1558,7 +1688,7 @@ export const GrowDetail: React.FC = () => {
                             className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg flex items-center gap-2 text-sm transition-colors"
                         >
                             <ArrowUpDown size={14} />
-                            {sortDirection === 'desc' ? (t.common?.newestFirst || 'Neueste zuerst') : (t.common?.oldestFirst || 'Älteste zuerst')}
+                            {sortDirection === 'desc' ? (t.common?.newestFirst || 'Newest') : (t.common?.oldestFirst || 'Oldest')}
                         </button>
 
                         {/* Stage Filter */}
@@ -1567,8 +1697,8 @@ export const GrowDetail: React.FC = () => {
                             onChange={(e) => setFilterStage(e.target.value)}
                             className="bg-slate-800 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-sm outline-none focus:border-emerald-500"
                         >
-                            <option value="all">{t.common?.allStages || 'Alle Phasen'}</option>
-                            {Object.entries(t.profiles.stages).map(([key, label]) => (
+                            <option value="all">{t.common?.allStages || 'All Stages'}</option>
+                            {Object.entries(t.profiles?.stages || {}).map(([key, label]) => (
                                 <option key={key} value={key}>{label}</option>
                             ))}
                         </select>

@@ -14,6 +14,8 @@ export interface StageConfig {
   ppfd?: string;
   lightCycle?: string;
   light?: string;
+  ec?: string; // New EC value
+  ph?: string; // New pH value
   nutrients: NutrientEntry[];
   notes: string;
   schedule: StageTask[];
@@ -39,15 +41,30 @@ export interface EnvironmentLog {
   dli?: number;
   ppfd?: number;
   lightCycle?: string;
+  ec?: number; // Added EC here too for consistency if we track env logs
+  ph?: number;
+}
+
+export interface WeekConfig extends StageConfig {
+  // Extending StageConfig for week-specific settings
+}
+
+export interface PhaseConfig {
+  weeks: WeekConfig[]; // Array of weekly configs
 }
 
 export interface Profile {
   id: string;
   name: string;
   description: string;
-  vegiDurationWeeks: number;
-  flowerDurationWeeks: number;
-  stages: {
+  vegiDurationWeeks?: number; // Optional/Derived
+  flowerDurationWeeks?: number; // Optional/Derived
+  phases: {
+    vegetation: PhaseConfig;
+    flowering: PhaseConfig;
+    drying: PhaseConfig;
+  };
+  stages?: { // Legacy support during migration
     seedling: StageConfig;
     vegetation: StageConfig;
     flowering: StageConfig;
@@ -69,6 +86,8 @@ export interface LogEntry {
   images: string[]; // Base64 strings
   tags: string[];
   water?: number; // Liters
+  ec?: number; // Electrical Conductivity
+  ph?: number; // pH Value
   nutrients?: NutrientEntry[];
   environment?: EnvironmentLog;
 }
