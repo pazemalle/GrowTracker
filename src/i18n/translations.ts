@@ -73,6 +73,7 @@ export const translations = {
             noteTitle: 'Titel',
             noteContent: 'Inhalt',
             tags: 'Tags',
+            tagsPlaceholder: 'Tag eingeben & Enter drücken',
             noNotes: 'Keine Notizen gefunden',
             createFirst: 'Erstelle deine erste Notiz.',
         },
@@ -273,6 +274,8 @@ export const translations = {
             oldestFirst: 'Älteste zuerst',
             allStages: 'Alle Phasen',
             export: 'Exportieren',
+            deleteConfirm: 'Bist du sicher?',
+            search: 'Suchen...',
         },
     },
 
@@ -350,6 +353,7 @@ export const translations = {
             noteTitle: 'Title',
             noteContent: 'Content',
             tags: 'Tags',
+            tagsPlaceholder: 'Add tag & press Enter',
             noNotes: 'No notes found',
             createFirst: 'Create your first note to get started.',
         },
@@ -551,6 +555,8 @@ export const translations = {
             oldestFirst: 'Oldest first',
             allStages: 'All Stages',
             export: 'Export',
+            deleteConfirm: 'Are you sure?',
+            search: 'Search...',
         },
     },
 };

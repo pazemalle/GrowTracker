@@ -223,7 +223,7 @@ export default function Notes() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">{t.notes?.tags || 'Tags'} <span className="text-xs text-slate-500 font-normal">(Press Enter to add)</span></label>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">{t.notes?.tags || 'Tags'}</label>
                             <div className="flex flex-wrap gap-2 mb-2">
                                 {formData.tags?.map(tag => (
                                     <span key={tag} className="bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded text-xs flex items-center gap-1 border border-emerald-500/20">
@@ -235,7 +235,7 @@ export default function Notes() {
                             <input
                                 type="text"
                                 className="input w-full"
-                                placeholder="Add a tag..."
+                                placeholder={t.notes?.tagsPlaceholder || "Add tag & press Enter"}
                                 value={currentTag}
                                 onChange={e => setCurrentTag(e.target.value)}
                                 onKeyDown={handleAddTag}
