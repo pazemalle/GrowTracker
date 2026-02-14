@@ -115,8 +115,10 @@ export const Dashboard: React.FC = () => {
                     <div className="flex flex-col space-y-8">
                         {activeGrows.map(grow => {
                             // Calculate active days/stage
-                            const lastLog = grow.logs.length > 0
-                                ? grow.logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+                            // Defensive coding: logs might be undefined if data is corrupted
+                            const logs = grow.logs || [];
+                            const lastLog = logs.length > 0
+                                ? logs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
                                 : null;
                             const endDate = lastLog ? new Date(lastLog.date) : new Date();
                             const days = lastLog?.day ? lastLog.day : differenceInDays(endDate, new Date(grow.startDate)) + 1;
@@ -175,7 +177,9 @@ export const Dashboard: React.FC = () => {
                                             <div className="flex flex-wrap gap-2 mt-2 mb-2">
                                                 {/* Flower Stats */}
                                                 {(() => {
-                                                    const flowerLog = grow.logs
+                                                    // Defensive: logs might be undefined
+                                                    const logs = grow.logs || [];
+                                                    const flowerLog = logs
                                                         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
                                                         .find(log => log.stage === 'flowering');
 
@@ -207,7 +211,7 @@ export const Dashboard: React.FC = () => {
                                                     <span>📆 {weeks} {t.growDetail.weeks}</span>
                                                 </div>
                                                 <div className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                                                    <span>📝 {grow.logs.length} Logs</span>
+                                                    <span>📝 {(grow.logs || []).length} Logs</span>
                                                 </div>
                                             </div>
 
@@ -252,7 +256,7 @@ export const Dashboard: React.FC = () => {
                                         // 1. Profile Schedule Tasks
                                         if (profile) {
                                             const currentStage = lastLog ? lastLog.stage : grow.currentStage;
-                                            const stageConfig = profile.stages[currentStage];
+                                            const stageConfig = profile.stages?.[currentStage];
                                             if (stageConfig && stageConfig.schedule) {
                                                 const currentStageDay = lastLog?.stageDay || 1;
                                                 const scheduleEvents = stageConfig.schedule
@@ -267,7 +271,7 @@ export const Dashboard: React.FC = () => {
                                             const referenceDate = lastLog ? new Date(lastLog.date) : new Date();
 
                                             // Switch to Flower
-                                            const vegiDays = profile.vegiDurationWeeks * 7;
+                                            const vegiDays = (profile.vegiDurationWeeks || 4) * 7;
                                             const switchDate = addDays(new Date(grow.startDate), vegiDays);
                                             const switchDiff = differenceInDays(switchDate, referenceDate);
 
@@ -281,7 +285,7 @@ export const Dashboard: React.FC = () => {
                                             }
 
                                             // Harvest
-                                            const flowerDays = profile.flowerDurationWeeks * 7;
+                                            const flowerDays = (profile.flowerDurationWeeks || 9) * 7;
                                             const harvestDate = addDays(switchDate, flowerDays);
                                             const harvestDiff = differenceInDays(harvestDate, referenceDate);
 
@@ -346,7 +350,7 @@ export const Dashboard: React.FC = () => {
                                         </span>
                                     </div>
                                     <p className="text-sm text-slate-500">
-                                        {format(new Date(grow.startDate), 'MMM yyyy')} • {grow.logs.length} Logs
+                                        {format(new Date(grow.startDate), 'MMM yyyy')} • {(grow.logs || []).length} Logs
                                     </p>
                                 </Link>
                             ))}

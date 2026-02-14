@@ -14,6 +14,7 @@ import Notes from './components/Notes';
 import SetupManager from './components/SetupManager';
 import { useLanguage } from './context/LanguageContext';
 import { useAuth } from './context/AuthContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Wrapper component to set StoreContext reference for AuthContext
 const StoreContextConnector: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -180,9 +181,11 @@ const App: React.FC = () => {
       <AuthProvider>
         <StoreProvider>
           <StoreContextConnector>
-            <Router>
-              <AppContent />
-            </Router>
+            <ErrorBoundary>
+              <Router>
+                <AppContent />
+              </Router>
+            </ErrorBoundary>
           </StoreContextConnector>
         </StoreProvider>
       </AuthProvider>

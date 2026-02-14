@@ -50,7 +50,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const loadedSeeds = localStorage.getItem(STORAGE_KEY_SEEDS);
         const loadedNotes = localStorage.getItem(STORAGE_KEY_NOTES);
 
-        if (loadedGrows) { try { setGrows(JSON.parse(loadedGrows)); } catch (e) { console.error(e); } }
+        if (loadedGrows) {
+            try {
+                const parsedGrows = JSON.parse(loadedGrows);
+                // Sanitize: Ensure logs array exists
+                const sanitizedGrows = Array.isArray(parsedGrows) ? parsedGrows.map((g: any) => ({
+                    ...g,
+                    logs: Array.isArray(g.logs) ? g.logs : []
+                })) : [];
+                setGrows(sanitizedGrows);
+            } catch (e) {
+                console.error(e);
+                setGrows([]);
+            }
+        }
         if (loadedProfiles) { try { setProfiles(JSON.parse(loadedProfiles)); } catch (e) { console.error(e); } }
         if (loadedSetups) { try { setSetups(JSON.parse(loadedSetups)); } catch (e) { console.error(e); } }
         if (loadedSeeds) { try { setSeeds(JSON.parse(loadedSeeds)); } catch (e) { console.error(e); } }
@@ -79,7 +92,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
                     // Only update state if data exists, or if we want to trust the server's "empty" state.
                     // If server returns empty properties, it means clean state.
-                    if (serverData.grows) setGrows(serverData.grows);
+                    if (serverData.grows) {
+                        // Sanitize server data too
+                        const sanitizedGrows = Array.isArray(serverData.grows) ? serverData.grows.map((g: any) => ({
+                            ...g,
+                            logs: Array.isArray(g.logs) ? g.logs : []
+                        })) : [];
+                        setGrows(sanitizedGrows);
+                    }
                     if (serverData.profiles) setProfiles(serverData.profiles);
                     if (serverData.setups) setSetups(serverData.setups);
                     if (serverData.seeds) setSeeds(serverData.seeds);
