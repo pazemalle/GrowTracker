@@ -1,0 +1,95 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e7]:
+        - img [ref=e9]
+        - generic [ref=e13]:
+          - generic [ref=e14]: GrowTracker
+          - generic [ref=e15]: Cannabis Anbau
+      - generic [ref=e16]:
+        - link "Dashboard" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - img [ref=e18]
+          - generic [ref=e23]: Dashboard
+        - link "Neuer Grow" [ref=e24] [cursor=pointer]:
+          - /url: /new-grow
+          - img [ref=e25]
+          - generic [ref=e29]: Neuer Grow
+        - link "Profile" [ref=e30] [cursor=pointer]:
+          - /url: /profiles
+          - img [ref=e31]
+          - generic [ref=e35]: Profile
+        - link "Grow Setups" [ref=e36] [cursor=pointer]:
+          - /url: /setups
+          - img [ref=e37]
+          - generic [ref=e39]: Grow Setups
+        - link "Seeds" [ref=e40] [cursor=pointer]:
+          - /url: /seeds
+          - img [ref=e41]
+          - generic [ref=e45]: Seeds
+        - link "Notizen" [ref=e46] [cursor=pointer]:
+          - /url: /notes
+          - img [ref=e47]
+          - generic [ref=e53]: Notizen
+        - link "Einstellungen" [ref=e54] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e55]
+          - generic [ref=e58]: Einstellungen
+      - generic [ref=e60]: Gast-Modus
+  - main [ref=e62]:
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - heading "Neues Profil" [level=2] [ref=e65]
+        - button [ref=e66]:
+          - img [ref=e67]
+      - generic [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]: Profilname
+          - textbox "e.g., Northern Lights Auto" [ref=e73]
+        - generic [ref=e74]:
+          - generic [ref=e75]: Beschreibung
+          - textbox "Optional description..." [ref=e76]
+      - generic [ref=e77]:
+        - heading "Global Nutrient Definitions" [level=3] [ref=e78]:
+          - img [ref=e79]
+          - text: Global Nutrient Definitions
+        - generic [ref=e83]:
+          - textbox "Add new nutrient (e.g. BioGro)..." [ref=e84]
+          - generic [ref=e85]:
+            - combobox [ref=e86]:
+              - option "Veg"
+              - option "Bloom"
+              - option "Booster"
+              - option "Other" [selected]
+            - button [ref=e87]:
+              - img [ref=e88]
+        - paragraph [ref=e92]: No nutrients defined yet.
+      - generic [ref=e93]:
+        - generic [ref=e94]:
+          - button "🌱 Vegetation" [ref=e95]:
+            - generic [ref=e97]:
+              - generic [ref=e98]: 🌱
+              - text: Vegetation
+          - button "🌻 Blüte" [ref=e99]:
+            - generic [ref=e100]:
+              - generic [ref=e101]: 🌻
+              - text: Blüte
+          - button "🌬️ Trocknung" [ref=e102]:
+            - generic [ref=e103]:
+              - generic [ref=e104]: 🌬️
+              - text: Trocknung
+        - button "Add Week to vegetation" [ref=e106] [cursor=pointer]:
+          - img [ref=e108]
+          - generic [ref=e111]: Add Week to vegetation
+      - generic [ref=e112]:
+        - generic [ref=e113]: Allgemeine Notizen / Strategie
+        - textbox "Gib Düngeplan, Trainingstechniken usw. ein..." [ref=e114]
+      - generic [ref=e115]:
+        - button "Abbrechen" [ref=e116] [cursor=pointer]
+        - button "Profil speichern" [ref=e117] [cursor=pointer]:
+          - img [ref=e118]
+          - text: Profil speichern
+```
