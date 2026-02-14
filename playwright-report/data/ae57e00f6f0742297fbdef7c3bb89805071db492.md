@@ -1,0 +1,67 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e10]: GrowTracker
+    - button [ref=e11]:
+      - img [ref=e12]
+  - navigation [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - link "Dashboard" [ref=e16]:
+          - /url: /
+          - img [ref=e17]
+          - generic [ref=e22]: Dashboard
+        - link "Neuer Grow" [ref=e23]:
+          - /url: /new-grow
+          - img [ref=e24]
+          - generic [ref=e26]: Neuer Grow
+        - link "Profile" [ref=e27]:
+          - /url: /profiles
+          - img [ref=e28]
+          - generic [ref=e31]: Profile
+        - link "Grow Setups" [ref=e32]:
+          - /url: /setups
+          - img [ref=e33]
+          - generic [ref=e35]: Grow Setups
+        - link "Seeds" [ref=e36]:
+          - /url: /seeds
+          - img [ref=e37]
+          - generic [ref=e40]: Seeds
+        - link "Notizen" [ref=e41]:
+          - /url: /notes
+          - img [ref=e42]
+          - generic [ref=e45]: Notizen
+        - link "Einstellungen" [ref=e46]:
+          - /url: /settings
+          - img [ref=e47]
+          - generic [ref=e50]: Einstellungen
+      - generic [ref=e52]: Gast-Modus
+  - main [ref=e54]:
+    - generic [ref=e55]:
+      - generic [ref=e56]:
+        - generic [ref=e57]:
+          - heading "Dashboard" [level=1] [ref=e58]
+          - paragraph [ref=e59]: Übersicht deiner aktuellen Grows
+        - generic [ref=e60]:
+          - generic "Daten importieren" [ref=e61] [cursor=pointer]:
+            - img [ref=e62]
+          - button "Alle Daten exportieren" [ref=e65] [cursor=pointer]:
+            - img [ref=e66]
+          - link "Neuen Grow starten" [ref=e69] [cursor=pointer]:
+            - /url: /new-grow
+            - img [ref=e70]
+            - text: Neuen Grow starten
+      - generic [ref=e72]:
+        - heading "Aktive Grows" [level=2] [ref=e73]:
+          - img [ref=e74]
+          - text: Aktive Grows
+        - generic [ref=e77]:
+          - img [ref=e78]
+          - paragraph [ref=e81]: Keine aktiven Grows.
+          - link "Neuen Grow starten →" [ref=e82]:
+            - /url: /new-grow
+```

@@ -13,7 +13,9 @@ A powerful, modern, and full-stack application designed to help you plan, track,
   - **VPD Calculation**: Automatically calculates Vapor Pressure Deficit based on your inputs.
   - **Auto-Titles**: Log titles are automatically generated based on the day and week (e.g., "Tag 15 / Woche 3").
   - **Stage Sync**: Automatically detects and syncs the current growth stage from your latest logs.
-- **🎪 Setup Manager**: manage multiple grow tents and environments. Track lights, exhaust, filters, and circulation fans for each setup.
+- **� Grow Profiles**: Create reusable grow templates with predefined phases, environmental targets (VPD, DLI, PPFD), and nutrient schedules.
+- **✨ Smart New Grow Wizard**: Step-by-step wizard to start a new grow, selecting strains, setups, and applying a profile for automated tracking.
+- **�🎪 Setup Manager**: manage multiple grow tents and environments. Track lights, exhaust, filters, and circulation fans for each setup.
 - **🧬 Seed Bank**: Organize your seed inventory. Track breeders, strains, phenotypes (Auto/Fem/Reg), flowering times, and stock levels.
 - **👤 User Management**:
   - **Account System**: Register and login to sync your data across devices.
@@ -27,6 +29,27 @@ A powerful, modern, and full-stack application designed to help you plan, track,
 - **Frontend**: React, TailwindCSS, Lucide Icons, Vite
 - **Backend**: Node.js, Express
 - **Database**: SQLite (Stored locally on server) + JSON fallback
+- **Testing**: Vitest (Unit), Playwright (E2E)
+
+## 🧪 Testing
+
+This project uses a comprehensive testing strategy ensuring stability and reliability.
+
+### Unit & Integration Tests (Vitest)
+Run unit tests for components and utilities:
+```bash
+npm run test
+```
+
+### End-to-End Tests (Playwright)
+Run E2E tests to verify core user flows (Dashboard, Profiles, Setups, etc.):
+```bash
+npm run test:e2e
+```
+To view the UI report:
+```bash
+npx playwright show-report
+```
 
 ## 🚀 Getting Started
 

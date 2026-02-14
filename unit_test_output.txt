@@ -1,0 +1,63 @@
+
+[1m[46m RUN [49m[22m [36mv4.0.18 [39m[90m/Users/michel/Documents/GrowTracker[39m
+
+(node:92028) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m src/components/__tests__/Notes.test.tsx [2m([22m[2m2 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 16[2mms[22m[39m
+[31m     [31m×[31m renders the notes empty state initially[39m[32m 13[2mms[22m[39m
+[31m     [31m×[31m opens the add note form when clicking new note button[39m[32m 2[2mms[22m[39m
+ [31m❯[39m e2e/core-flows.spec.ts [2m([22m[2m0 test[22m[2m)[22m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m e2e/core-flows.spec.ts[2m [ e2e/core-flows.spec.ts ][22m
+[31m[1mError[22m: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.[39m
+[90m [2m❯[22m TestTypeImpl._currentSuite node_modules/playwright/lib/common/testType.js:[2m75:13[22m[39m
+[90m [2m❯[22m TestTypeImpl._describe node_modules/playwright/lib/common/testType.js:[2m115:24[22m[39m
+[90m [2m❯[22m Function.describe node_modules/playwright/lib/transform/transform.js:[2m282:12[22m[39m
+[36m [2m❯[22m e2e/core-flows.spec.ts:[2m3:6[22m[39m
+    [90m  1| [39m[35mimport[39m { test[33m,[39m expect } [35mfrom[39m [32m'@playwright/test'[39m[33m;[39m
+    [90m  2| [39m
+    [90m  3| [39mtest[33m.[39m[34mdescribe[39m([32m'Core Flows'[39m[33m,[39m () [33m=>[39m {
+    [90m   | [39m     [31m^[39m
+    [90m  4| [39m    test[33m.[39m[34mbeforeEach[39m([35masync[39m ({ page }) [33m=>[39m {
+    [90m  5| [39m        [35mawait[39m page[33m.[39m[34mgoto[39m([32m'/'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯[22m[39m
+
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/components/__tests__/Notes.test.tsx[2m > [22mNotes Component[2m > [22mrenders the notes empty state initially
+[41m[1m FAIL [22m[49m src/components/__tests__/Notes.test.tsx[2m > [22mNotes Component[2m > [22mopens the add note form when clicking new note button
+[31m[1mTypeError[22m: localStorage.getItem is not a function[39m
+[36m [2m❯[22m AuthProvider src/context/AuthContext.tsx:[2m23:68[22m[39m
+    [90m 21| [39m
+    [90m 22| [39mexport const AuthProvider: React.FC<{ children: ReactNode }> = ({ chil…
+    [90m 23| [39m    const [token, setToken] = useState<string | null>(localStorage.get…
+    [90m   | [39m                                                                   [31m^[39m
+    [90m 24| [39m    const [username, setUsername] = useState<string | null>(localStora…
+    [90m 25| [39m    const [role, setRole] = useState<string | null>(localStorage.getIt…
+[90m [2m❯[22m Object.react_stack_bottom_frame node_modules/react-dom/cjs/react-dom-client.development.js:[2m25904:20[22m[39m
+[90m [2m❯[22m renderWithHooks node_modules/react-dom/cjs/react-dom-client.development.js:[2m7662:22[22m[39m
+[90m [2m❯[22m updateFunctionComponent node_modules/react-dom/cjs/react-dom-client.development.js:[2m10166:19[22m[39m
+[90m [2m❯[22m beginWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m11778:18[22m[39m
+[90m [2m❯[22m runWithFiberInDEV node_modules/react-dom/cjs/react-dom-client.development.js:[2m874:13[22m[39m
+[90m [2m❯[22m performUnitOfWork node_modules/react-dom/cjs/react-dom-client.development.js:[2m17641:22[22m[39m
+[90m [2m❯[22m workLoopSync node_modules/react-dom/cjs/react-dom-client.development.js:[2m17469:41[22m[39m
+[90m [2m❯[22m renderRootSync node_modules/react-dom/cjs/react-dom-client.development.js:[2m17450:11[22m[39m
+[90m [2m❯[22m performWorkOnRoot node_modules/react-dom/cjs/react-dom-client.development.js:[2m16583:35[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m   Start at [22m 18:39:47
+[2m   Duration [22m 2.24s[2m (transform 126ms, setup 283ms, import 1.09s, tests 16ms, environment 1.16s)[22m
+
