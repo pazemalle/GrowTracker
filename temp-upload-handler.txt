@@ -1,0 +1,42 @@
+    const handleUploadLocalData = async () => {
+        if (!isAuthenticated || !username) return;
+
+        console.log('Starting upload...', { growsCount: grows.length, profilesCount: profiles.length });
+
+        try {
+            const token = localStorage.getItem('cgt_token');
+            
+            // Upload data to server
+            const uploadResponse = await fetch(`${API_URL}/data`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ grows, profiles })
+            });
+
+            console.log('Upload response:', uploadResponse.status);
+
+            if (uploadResponse.ok) {
+                console.log('Upload successful, clearing localStorage...');
+                
+                // Clear local storage directly
+                localStorage.removeItem('cgt_grows');
+                localStorage.removeItem('cgt_profiles');
+                
+                console.log('LocalStorage cleared. Keys remaining:', Object.keys(localStorage));
+                
+                // Small delay to ensure localStorage is cleared
+                setTimeout(() => {
+                    window.location.reload();
+                }, 100);
+            } else {
+                console.error('Upload failed:', uploadResponse.status);
+                alert(t.settings.uploadError);
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert(t.settings.uploadError);
+        }
+    };
