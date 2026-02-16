@@ -122,3 +122,7 @@ npm run dev
 ## 🤝 Contributing
 
 Feel free to open issues or submit pull requests if you have ideas for improvements!
+
+## 📄 License
+
+This project is licensed under the **GNU General Public License v3.0**. See the [LICENSE](LICENSE) file for details.
