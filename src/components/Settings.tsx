@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Globe, Download, Upload, Trash2, Key, Shield, ShieldOff, Lock, RotateCcw, User, LogOut, ChevronDown, ChevronUp, Server, ShieldCheck } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
 export const SettingsPage: React.FC = () => {
     const { language, setLanguage, t } = useLanguage();

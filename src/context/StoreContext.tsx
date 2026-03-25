@@ -9,7 +9,7 @@ const STORAGE_KEY_PROFILES = 'cgt_profiles';
 const STORAGE_KEY_SETUPS = 'cgt_setups';
 const STORAGE_KEY_SEEDS = 'cgt_seeds';
 const STORAGE_KEY_NOTES = 'cgt_notes';
-const API_URL = 'http://localhost:3001/api';
+const API_URL = import.meta.env.DEV ? 'http://localhost:3001/api' : '/api';
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [grows, setGrows] = useState<Grow[]>([]);
