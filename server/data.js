@@ -3,7 +3,7 @@ const { db } = require('./db');
 const jwt = require('jsonwebtoken');
 
 const router = express.Router();
-const SECRET_KEY = 'super_secret_key_change_me_in_prod';
+const SECRET_KEY = process.env.JWT_SECRET || 'super_secret_key_change_me_in_prod';
 
 // Middleware to verify token
 const authenticateToken = (req, res, next) => {
