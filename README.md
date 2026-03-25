@@ -137,16 +137,17 @@ To deploy the application securely on a server (e.g., VPS, Docker):
 
 ### 🐳 Docker & Synology NAS Deployment
 
-This application is fully Docker-ready, making it perfect for 24/7 deployment on a **Synology NAS** (via Container Manager) or any server running Docker. Thanks to the configured bind mounts, your SQLite database (`growtracker.db`) will be safely stored on your host and never lost during updates.
+This application is fully Docker-ready and pre-built on GitHub Container Registry (GHCR). This makes it perfect for 24/7 deployment on a **Synology NAS** (via Container Manager) or any server. Your SQLite database (`growtracker.db`) will be safely stored on your host and never lost during updates.
 
-1. **Clone/Copy the project** to your NAS or Server.
+1. **Download only the `docker-compose.yml`** to a new folder on your NAS or Server.
 2. Ensure you have Docker & Docker Compose installed (or "Container Manager" on Synology).
 3. Open `docker-compose.yml` and **change the `JWT_SECRET`** to a secure random string.
-4. Run the container:
+4. Start the app:
 
    ```bash
-   docker-compose up -d --build
+   docker-compose up -d
    ```
+   *(To update to the newest version later, run `docker-compose pull && docker-compose up -d`)*
 
 5. The app will be available at: `http://<YOUR-NAS-IP>:3001`
 6. **Data Persistence**: A new `data/` folder will be created next to your `docker-compose.yml`. This folder contains your `growtracker.db` and persists automatically!

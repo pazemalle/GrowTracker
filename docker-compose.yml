@@ -2,8 +2,7 @@ version: '3.8'
 
 services:
   growtracker:
-    build: .
-    # For Synology users, you can also build the image manually or pull from a registry if you push it
+    image: ghcr.io/pazemalle/growtracker:main
     container_name: cannabis-grow-tracker
     restart: unless-stopped
     ports:
