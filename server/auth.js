@@ -4,7 +4,10 @@ const jwt = require('jsonwebtoken');
 const { db } = require('./db');
 
 const router = express.Router();
-const SECRET_KEY = 'super_secret_key_change_me_in_prod'; // Simplification for demo
+const SECRET_KEY = process.env.JWT_SECRET || 'super_secret_key_change_me_in_prod';
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    console.warn('WARNING: Using default JWT_SECRET in production. This is highly insecure!');
+}
 
 // Register
 router.post('/register', async (req, res) => {

@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+dist
+server/growtracker.db
+.env
+.git
+.gitignore
+README.md
+Dockerfile
+docker-compose.yml

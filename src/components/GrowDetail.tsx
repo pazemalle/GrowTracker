@@ -37,16 +37,11 @@ const getHoursFromCycle = (cycle: string): number => {
     return match ? parseFloat(match[1]) : 0;
 };
 
-export const GrowDetail: React.FC = () => {
+const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> = ({ grow, profile, linkedSetups }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    // const { isAuthenticated } = useAuth(); // Unused
     const { grows, profiles, setups, seeds = [], updateGrow, deleteGrow } = useStore();
     const { t } = useLanguage();
-
-    const grow = grows.find(g => g.id === id);
-    const profile = profiles.find(p => p.id === grow?.profileId);
-    const linkedSetups = setups.filter(s => grow?.setupIds?.includes(s.id) || grow?.setupId === s.id);
 
     // Grow Edit State
     const [isEditingGrow, setIsEditingGrow] = useState(false);
@@ -117,8 +112,6 @@ export const GrowDetail: React.FC = () => {
     const [isNewLogTitleManual, setIsNewLogTitleManual] = useState(false);
     const [isEditLogTitleManual, setIsEditLogTitleManual] = useState(false);
     const [isAddingLog, setIsAddingLog] = useState(false);
-
-    if (!grow) return <div>Grow not found</div>;
 
     // Available Nutrients (Profile + Custom)
     const availableNutrients = useMemo(() => {
@@ -1893,4 +1886,15 @@ export const GrowDetail: React.FC = () => {
             </div>
         </div >
     );
+};
+
+export const GrowDetail: React.FC = () => {
+    const { id } = useParams<{ id: string }>();
+    const { grows, profiles, setups } = useStore();
+    const grow = grows.find(g => g.id === id);
+    if (!grow) return <div>Grow not found</div>;
+    const profile = profiles.find(p => p.id === grow.profileId);
+    const linkedSetups = setups.filter(s => grow.setupIds?.includes(s.id) || grow.setupId === s.id);
+
+    return <GrowDetailInner grow={grow} profile={profile} linkedSetups={linkedSetups} />;
 };

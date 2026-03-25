@@ -74,9 +74,9 @@ npx playwright show-report
     npm install
     ```
 
-### ▶️ Running the App
+### 💻 Local Development (Development Mode)
 
-The easiest way to start the application is using the "full" development mode, which starts both the Backend API and the Frontend concurrently.
+The easiest way to start the application locally for development is using the "full" development mode, which starts both the Backend API and the Frontend concurrently.
 
 1. **Start Development Server**:
 
@@ -95,7 +95,7 @@ The easiest way to start the application is using the "full" development mode, w
 - **Admin Account**: The **first user** you register will automatically be assigned the **Admin** role.
 - **Data**: The database starts empty. You will need to create your first Grow config and Profiles.
 
-### Alternate Manual Startup
+### Alternate Manual Startup (Development)
 
 If you prefer to run them separately:
 
@@ -110,6 +110,47 @@ node server/index.js
 ```bash
 npm run dev
 ```
+
+### ☁️ Server Deployment (Production)
+
+To deploy the application securely on a server (e.g., VPS, Docker):
+
+1. **Build the Frontend**:
+
+   ```bash
+   npm run build
+   ```
+
+2. **Set Environment Variables**:
+   - `JWT_SECRET`: A strong secret key for authentication.
+   - `DB_PATH`: The absolute path where the database should be stored (essential for data persistence across updates or Docker volumes).
+   - `PORT`: (Optional) Port to run on (default 3001).
+   - `CORS_ORIGIN`: (Optional) Restrict API access to a specific origin.
+
+3. **Start the Production Server**:
+
+   ```bash
+   NODE_ENV=production PORT=8080 DB_PATH=/app/data/growtracker.db JWT_SECRET=my_secure_secret npm start
+   ```
+
+   *Note: In production mode, the backend automatically serves the built frontend, so you only need to run this single command.*
+
+### 🐳 Docker & Synology NAS Deployment
+
+This application is fully Docker-ready, making it perfect for 24/7 deployment on a **Synology NAS** (via Container Manager) or any server running Docker. Thanks to the configured bind mounts, your SQLite database (`growtracker.db`) will be safely stored on your host and never lost during updates.
+
+1. **Clone/Copy the project** to your NAS or Server.
+2. Ensure you have Docker & Docker Compose installed (or "Container Manager" on Synology).
+3. Open `docker-compose.yml` and **change the `JWT_SECRET`** to a secure random string.
+4. Run the container:
+
+   ```bash
+   docker-compose up -d --build
+   ```
+
+5. The app will be available at: `http://<YOUR-NAS-IP>:3001`
+6. **Data Persistence**: A new `data/` folder will be created next to your `docker-compose.yml`. This folder contains your `growtracker.db` and persists automatically!
+
 
 ## 📂 Project Structure
 

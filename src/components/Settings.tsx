@@ -55,7 +55,7 @@ export const SettingsPage: React.FC = () => {
         }
     }, [isAuthenticated]);
 
-    const fetchBackups = async () => {
+    async function fetchBackups() {
         try {
             const token = localStorage.getItem('cgt_token');
             const response = await fetch(`${API_URL}/data/backups`, {
@@ -171,7 +171,7 @@ export const SettingsPage: React.FC = () => {
         }
     };
 
-    const fetchUsers = async () => {
+    async function fetchUsers() {
         try {
             const token = localStorage.getItem('cgt_token');
             const response = await fetch(`${API_URL}/admin/users`, {

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  growtracker:
+    build: .
+    # For Synology users, you can also build the image manually or pull from a registry if you push it
+    container_name: cannabis-grow-tracker
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      # Map the local "data" directory to the container's /app/data dir to persist the SQLite database
+      - ./data:/app/data
+    environment:
+      # Replace this with a strong, random password string for production!
+      - JWT_SECRET=change_me_to_a_secure_random_string_for_production
+      - NODE_ENV=production
+      - PORT=3001
+      # (Optional) If you want to restrict API access add CORS_ORIGIN
+      # - CORS_ORIGIN=http://your-nas-ip-or-domain:3001
