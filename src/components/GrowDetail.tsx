@@ -38,9 +38,9 @@ const getHoursFromCycle = (cycle: string): number => {
 };
 
 const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> = ({ grow, profile, linkedSetups }) => {
-    const { id } = useParams<{ id: string }>();
+    // Unused id removed
     const navigate = useNavigate();
-    const { grows, profiles, setups, seeds = [], updateGrow, deleteGrow } = useStore();
+    const { profiles, setups, seeds = [], updateGrow, deleteGrow } = useStore();
     const { t } = useLanguage();
 
     // Grow Edit State
@@ -67,7 +67,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
     const [editLogTemp, setEditLogTemp] = useState<string>('');
     const [editLogHumidity, setEditLogHumidity] = useState<string>('');
     const [editLogVpd, setEditLogVpd] = useState<string>('');
-    const [editLogDli, setEditLogDli] = useState<string>('');
+    const [editLogDli, setEditLogDli] = useState<string>(''); // setEditLogDli unused but kept for structure
     const [editLogPpfd, setEditLogPpfd] = useState<string>('');
     const [editLogEc, setEditLogEc] = useState<string>('');
     const [editLogPh, setEditLogPh] = useState<string>('');
@@ -118,8 +118,8 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
         const profileNutrients = profile?.nutrients || [];
         const customNutrients = grow.customNutrients || [];
         return [...profileNutrients, ...customNutrients]
-            .filter(n => n && n.name) // Filter out null/undefined or missing names
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            .filter((n: any) => n && n.name) // Filter out null/undefined or missing names
+            .sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
     }, [profile, grow.customNutrients]);
 
     // Auto-calculate Day when Date changes
@@ -194,7 +194,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                     weekIndex = Math.ceil((day || 1) / 7) - 1;
                 } else if (stage === 'flowering') {
                     const targetDate = new Date(date);
-                    const flowerStart = grow.logs.find(l => l.stage === 'flowering')?.date;
+                    const flowerStart = grow.logs.find((l: any) => l.stage === 'flowering')?.date;
                     if (flowerStart) {
                         const diff = differenceInDays(targetDate, new Date(flowerStart));
                         const d = diff >= 0 ? diff + 1 : 1;
@@ -204,7 +204,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                     }
                 } else if (stage === 'drying') {
                     const targetDate = new Date(date);
-                    const dryingStart = grow.logs.find(l => l.stage === 'drying')?.date;
+                    const dryingStart = grow.logs.find((l: any) => l.stage === 'drying')?.date;
                     if (dryingStart) {
                         const diff = differenceInDays(targetDate, new Date(dryingStart));
                         const d = diff >= 0 ? diff + 1 : 1;
@@ -300,8 +300,8 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
         if (stage === 'flowering') {
             // Find flowering start
             const floweringLogs = grow.logs
-                .filter(l => l.stage === 'flowering')
-                .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+                .filter((l: any) => l.stage === 'flowering')
+                .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
             let flowerStart = floweringLogs.length > 0 ? new Date(floweringLogs[0].date) : date;
 
@@ -395,7 +395,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
     // Date/Week Calculation (Synced with Dashboard)
     const lastLog = useMemo(() => {
         if (grow.logs.length === 0) return null;
-        return [...grow.logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+        return [...grow.logs].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
     }, [grow.logs]);
 
     // Auto-select Stage from Last Log
@@ -417,8 +417,8 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
     // Flower Stage Calculation
     const flowerStartDate = useMemo(() => {
         const firstFlowerLog = [...grow.logs]
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .find(log => log.stage === 'flowering');
+            .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            .find((log: any) => log.stage === 'flowering');
         return firstFlowerLog ? new Date(firstFlowerLog.date) : null;
     }, [grow.logs]);
 
@@ -464,7 +464,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                 const diff = differenceInDays(e.date, referenceDate);
                 return diff >= 0 && diff <= 14; // Next 2 weeks only
             })
-            .sort((a, b) => a.date.getTime() - b.date.getTime())
+            .sort((a: any, b: any) => a.date.getTime() - b.date.getTime())
             .slice(0, 3);
     }, [grow.startDate, profile, t, lastLog]);
 
@@ -474,7 +474,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
         // Determine start date of current stage
         // Find the earliest log with the current stage
-        const stageLogs = grow.logs.filter(l => l.stage === grow.currentStage);
+        const stageLogs = grow.logs.filter((l: any) => l.stage === grow.currentStage);
         const stageStartDate = stageLogs.length > 0
             ? new Date(stageLogs[stageLogs.length - 1].date)
             : new Date(); // Fallback to today if no logs yet
@@ -485,9 +485,9 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
         if (!stageConfig?.schedule) return [];
 
         return stageConfig.schedule
-            .filter(task => task.day >= currentStageDay && task.day <= currentStageDay + 7)
-            .sort((a, b) => a.day - b.day)
-            .map(task => ({
+            .filter((task: any) => task.day >= currentStageDay && task.day <= currentStageDay + 7)
+            .sort((a: any, b: any) => a.day - b.day)
+            .map((task: any) => ({
                 ...task,
                 date: addDays(stageStartDate, task.day - 1)
             }));
@@ -498,13 +498,13 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
         let totalWater = 0;
         const nutrientTotals: Record<string, { amount: number, unit: string }> = {};
 
-        grow.logs.forEach(log => {
+        grow.logs.forEach((log: any) => {
             if (log.water) {
                 totalWater += log.water;
             }
 
             if (log.nutrients) {
-                log.nutrients.forEach(n => {
+                log.nutrients.forEach((n: any) => {
                     // Only sum up if we can calculate a total (ml/L or g/L) AND we have water volume
                     // OR if it's an absolute value (not handled yet, assuming mostly mix-ins)
                     // User Request: "ml/L or g/L ... multiplied by water"
@@ -543,11 +543,11 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
         // Filter
         if (filterStage !== 'all') {
-            logs = logs.filter(log => log.stage === filterStage);
+            logs = logs.filter((log: any) => log.stage === filterStage);
         }
 
         // Sort
-        logs.sort((a, b) => {
+        logs.sort((a: any, b: any) => {
             const timeA = new Date(a.date).getTime();
             const timeB = new Date(b.date).getTime();
             return sortDirection === 'asc' ? timeA - timeB : timeB - timeA;
@@ -567,7 +567,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
         // Auto-migrate legacy strains to distribution if distribution is empty
         let initialDistribution = grow.strainDistribution || [];
         if (initialDistribution.length === 0 && grow.strains && grow.strains.length > 0) {
-            initialDistribution = grow.strains.map(name => ({
+            initialDistribution = grow.strains.map((name: any) => ({
                 id: uuidv4(),
                 name: name,
                 count: 1 // Default to 1, user can adjust
@@ -590,7 +590,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
     };
 
     const removeStrain = (id: string) => {
-        setEditStrainDistribution(editStrainDistribution.filter(s => s.id !== id));
+        setEditStrainDistribution(editStrainDistribution.filter((s: any) => s.id !== id));
     };
 
     const saveEditGrow = () => {
@@ -640,7 +640,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
         if (!editingLogId) return;
         if (!editLogTitle) return;
 
-        const updatedLogs = grow.logs.map(log => {
+        const updatedLogs = grow.logs.map((log: any) => {
             if (log.id === editingLogId) {
                 return {
                     ...log,
@@ -677,7 +677,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
     const deleteLog = (logId: string) => {
         if (confirm(t.common.confirm)) {
-            const updatedLogs = grow.logs.filter(l => l.id !== logId);
+            const updatedLogs = grow.logs.filter((l: any) => l.id !== logId);
             updateGrow({ ...grow, logs: updatedLogs });
         }
     };
@@ -686,7 +686,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
     const addNutrientToLog = (isEditMode: boolean) => {
         if (!selectedNutrientId || !nutrientAmount) return;
 
-        const nutrient = availableNutrients.find(n => n.id === selectedNutrientId);
+        const nutrient = availableNutrients.find((n: any) => n.id === selectedNutrientId);
         if (!nutrient) return;
 
         const entry: NutrientEntry = {
@@ -740,7 +740,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
     const deleteCustomNutrient = (id: string) => {
         if (confirm(t.common?.confirm || 'Delete?')) {
-            const updatedCustomNutrients = (grow.customNutrients || []).filter(n => n.id !== id);
+            const updatedCustomNutrients = (grow.customNutrients || []).filter((n: any) => n.id !== id);
             updateGrow({ ...grow, customNutrients: updatedCustomNutrients });
             if (selectedNutrientId === id) {
                 setSelectedNutrientId("");
@@ -872,7 +872,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
         const nutriParts = [];
         if (log.water) nutriParts.push(`Wasser: ${log.water}L`);
         if (log.nutrients && log.nutrients.length > 0) {
-            const nutrientsStr = log.nutrients.map(n => `${n.name} (${n.amount} ${n.unit})`).join(', ');
+            const nutrientsStr = log.nutrients.map((n: any) => `${n.name} (${n.amount} ${n.unit})`).join(', ');
             nutriParts.push(`Dünger: ${nutrientsStr}`);
         }
 
@@ -901,9 +901,9 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
     const handleExportAllLogsForum = () => {
         // Sort logs by date ascending (chronological) for the report
-        const sortedLogs = [...grow.logs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sortedLogs = [...grow.logs].sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        const fullReport = sortedLogs.map(log => generateForumBBCode(log)).join('\n\n------------------------------------------------\n\n');
+        const fullReport = sortedLogs.map((log: any) => generateForumBBCode(log)).join('\n\n------------------------------------------------\n\n');
 
         navigator.clipboard.writeText(fullReport);
         alert(t.growDetail.bbcodeCopied);
@@ -936,7 +936,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
         const vpd = isEdit ? editLogVpd : newLogVpd;
         const setVpd = isEdit ? setEditLogVpd : setNewLogVpd;
         const dli = isEdit ? editLogDli : newLogDli;
-        const setDli = isEdit ? setEditLogDli : setNewLogDli; // Replaced by specific handlers
+        // const setDli = isEdit ? setEditLogDli : setNewLogDli; // Replaced by specific handlers
         const ec = isEdit ? editLogEc : newLogEc;
         const setEc = isEdit ? setEditLogEc : setNewLogEc;
         const ph = isEdit ? editLogPh : newLogPh;
@@ -1009,9 +1009,9 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                                     value={stage}
                                     onChange={e => setStage(e.target.value as Stage)}
                                 >
-                                    {stages.map(s => (
+                                    {stages.map((s: any) => (
                                         <option key={s} value={s}>
-                                            {t.profiles?.stages?.[s] || s}
+                                            {(t.profiles?.stages as any)?.[s] || s}
                                         </option>
                                     ))}
                                 </select>
@@ -1122,7 +1122,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                             {grow.customNutrients && grow.customNutrients.length > 0 && (
                                 <div className="space-y-1 pt-2 border-t border-slate-800">
                                     <p className="text-xs font-bold text-slate-500 uppercase mb-2">{t.growDetail?.customNutrient || 'Custom Nutrients'}</p>
-                                    {grow.customNutrients.map(nut => (
+                                    {grow.customNutrients.map((nut: any) => (
                                         <div key={nut.id} className="flex justify-between items-center bg-slate-800 px-3 py-2 rounded border border-slate-700/50 hover:border-slate-600 transition-colors">
                                             <div className="flex items-center gap-2">
                                                 <span className={`w-2 h-2 rounded-full ${nut.type === 'veg' ? 'bg-emerald-500' :
@@ -1203,7 +1203,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                         <div className="md:col-span-8 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center min-h-[2.5rem]">
                             <select className="input w-full sm:flex-1 text-xs py-1 px-2 h-8" value={selectedNutrientId} onChange={e => setSelectedNutrientId(e.target.value)}>
                                 <option value="">{t.growDetail.selectNutrient}</option>
-                                {availableNutrients.map(n => (
+                                {availableNutrients.map((n: any) => (
                                     <option key={n.id} value={n.id}>{n.name} ({n.type})</option>
                                 ))}
                             </select>
@@ -1306,7 +1306,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                             <div>
                                 <label className="block text-sm font-medium text-slate-400 mb-2">Grow Setups</label>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                    {setups.map(s => (
+                                    {setups.map((s: any) => (
                                         <div
                                             key={s.id}
                                             onClick={() => {
@@ -1353,7 +1353,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                                             }}
                                         >
                                             <option value="">-- {t.seedBank?.title ? (t.seedBank as any).selectFromStash || 'Aus Samenbestand wählen' : 'Aus Samenbestand wählen'} --</option>
-                                            {seeds.filter(s => s.stock > 0).map(s => (
+                                            {seeds.filter((s: any) => s.stock > 0).map((s: any) => (
                                                 <option key={s.id} value={s.name}>{s.name} ({s.breeder}) - {s.stock}x</option>
                                             ))}
                                         </select>
@@ -1380,7 +1380,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                                 {/* List Strains */}
                                 {editStrainDistribution.length > 0 && (
                                     <div className="space-y-1">
-                                        {editStrainDistribution.map(s => (
+                                        {editStrainDistribution.map((s: any) => (
                                             <div key={s.id} className="flex justify-between items-center bg-slate-800 px-3 py-1.5 rounded text-sm">
                                                 <span>{s.count}x {s.name}</span>
                                                 <button onClick={() => removeStrain(s.id)} className="text-red-400 hover:text-red-300"><X size={14} /></button>
@@ -1417,7 +1417,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                             <div className="flex items-center gap-3 mb-1 group">
                                 <h2 className="text-3xl font-bold gradient-text">{grow.name}</h2>
                                 <span className="px-2 py-1 rounded text-xs font-bold bg-emerald-500/20 text-emerald-400 uppercase border border-emerald-500/30">
-                                    {t.profiles.stages[lastLog?.stage || grow.currentStage] || (lastLog?.stage || grow.currentStage)}
+                                    {(t.profiles.stages as any)[lastLog?.stage || grow.currentStage] || (lastLog?.stage || grow.currentStage)}
                                 </span>
                                 <button onClick={startEditGrow} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white">
                                     <Edit2 size={16} />
@@ -1432,7 +1432,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                             {(linkedSetups.length > 0 || (grow.strainDistribution && grow.strainDistribution.length > 0) || grow.plantCount) && (
                                 <div className="flex flex-wrap gap-2 mb-3 items-center">
                                     {/* Setups - Name Only, Details on Hover */}
-                                    {linkedSetups.map(s => (
+                                    {linkedSetups.map((s: any) => (
                                         <div
                                             key={s.id}
                                             className="text-sm text-slate-300 flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded border border-slate-600/50 cursor-help transition-colors hover:bg-slate-700"
@@ -1456,7 +1456,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                                         <div className="text-sm text-slate-300 flex items-center gap-1.5 bg-slate-800/50 px-2.5 py-1 rounded border border-slate-700/50">
                                             {/* <span className="text-emerald-400 font-bold text-xs">🧬</span> */}
                                             <span className="font-medium text-xs">
-                                                {grow.strainDistribution.map(s => `${s.count}x ${s.name}`).join(', ')}
+                                                {grow.strainDistribution.map((s: any) => `${s.count}x ${s.name}`).join(', ')}
                                             </span>
                                         </div>
                                     ) : (
@@ -1558,7 +1558,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                             <Calendar size={20} className="text-purple-400" /> {t.growDetail.upcomingTasks || "Upcoming Tasks"}
                         </h3>
                         <div className="space-y-3">
-                            {upcomingTasks.map((task, idx) => (
+                            {upcomingTasks.map((task: any, idx: any) => (
                                 <div key={idx} className="flex items-center gap-4 bg-slate-800/50 p-3 rounded-lg">
                                     <div className="text-center min-w-[60px]">
                                         <span className="block text-sm font-bold text-purple-400">{format(task.date, 'MMM d')}</span>
@@ -1566,7 +1566,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-slate-200">{task.task}</h4>
-                                        <p className="text-sm text-slate-400">{t.profiles.stages[grow.currentStage]}</p>
+                                        <p className="text-sm text-slate-400">{(t.profiles.stages as any)[grow.currentStage]}</p>
                                     </div>
                                 </div>
                             ))}
@@ -1655,7 +1655,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
                         {newLogImages.length > 0 && (
                             <div className="flex gap-2 overflow-x-auto py-2 mt-2">
-                                {newLogImages.map((img, idx) => (
+                                {newLogImages.map((img: any, idx: any) => (
                                     <img key={idx} src={img} alt="Preview" className="h-16 w-16 object-cover rounded border border-slate-600" />
                                 ))}
                             </div>
@@ -1704,7 +1704,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                     </div>
                 )}
 
-                {displayedLogs.map(log => (
+                {displayedLogs.map((log: any) => (
                     <div key={log.id} className="glass-panel p-6 relative group">
                         {editingLogId === log.id ? (
                             <div className="space-y-4">
@@ -1731,7 +1731,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
                                     {editLogImages.length > 0 ? (
                                         <div className="flex gap-2 overflow-x-auto py-2">
-                                            {editLogImages.map((img, idx) => (
+                                            {editLogImages.map((img: any, idx: any) => (
                                                 <div key={idx} className="relative group/img flex-shrink-0">
                                                     <img src={img} alt="Preview" className="h-20 w-20 object-cover rounded border border-slate-600" />
                                                     <button
@@ -1787,7 +1787,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                                                 const meta = generateLogMetadata(log.date, log.stage);
                                                 return (
                                                     <>
-                                                        {t.growDetail.day} {meta.day} / {t.growDetail.week} {meta.week} • {t.profiles.stages[log.stage] || log.stage}
+                                                        {t.growDetail.day} {meta.day} / {t.growDetail.week} {meta.week} • {(t.profiles.stages as any)[log.stage] || log.stage}
                                                         {meta.flowerDay && (
                                                             <> • BT {meta.flowerDay} / BW {meta.flowerWeek}</>
                                                         )}
@@ -1853,7 +1853,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                                             <Beaker size={14} className="text-purple-400" /> {t.growDetail.nutrients}
                                         </h5>
                                         <div className="flex flex-wrap gap-2">
-                                            {log.nutrients!.map((n, i) => (
+                                            {log.nutrients!.map((n: any, i: any) => (
                                                 <div key={i} className="flex items-center gap-2 bg-slate-800 px-3 py-1.5 rounded border border-slate-700">
                                                     <span className="text-purple-300 text-sm font-medium">{n.name}</span>
                                                     <span className="font-mono text-xs text-slate-400 border-l border-slate-600 pl-2">
@@ -1874,7 +1874,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
                                 {log.images.length > 0 && (
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        {log.images.map((img, idx) => (
+                                        {log.images.map((img: any, idx: any) => (
                                             <img key={idx} src={img} alt="Log attachment" className="rounded-lg border border-slate-700 w-full h-48 object-cover" />
                                         ))}
                                     </div>
@@ -1894,7 +1894,7 @@ export const GrowDetail: React.FC = () => {
     const grow = grows.find(g => g.id === id);
     if (!grow) return <div>Grow not found</div>;
     const profile = profiles.find(p => p.id === grow.profileId);
-    const linkedSetups = setups.filter(s => grow.setupIds?.includes(s.id) || grow.setupId === s.id);
+    const linkedSetups = setups.filter((s: any) => grow.setupIds?.includes(s.id) || grow.setupId === s.id);
 
     return <GrowDetailInner grow={grow} profile={profile} linkedSetups={linkedSetups} />;
 };

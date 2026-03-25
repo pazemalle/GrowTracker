@@ -1,7 +1,6 @@
 import { screen, fireEvent } from '@testing-library/react';
 import { render } from '../../test/utils';
 import Notes from '../Notes';
-import { vi } from 'vitest';
 
 // Mock the dependencies if needed, but integration test with context is better.
 // For now, let's rely on the default context values provided by customRender.
