@@ -155,10 +155,10 @@ const Navigation = () => {
 
 const AppContent = () => {
   return (
-    <div className="app-layout min-h-screen bg-[#0a0f1e]">
+    <div className="app-layout min-h-screen bg-[#0a0f1e] overflow-x-hidden w-full max-w-full flex flex-col">
       <Navigation />
       <div className="main-content transition-all duration-300">
-        <main className="container pt-20 md:pt-8 pb-8 px-4 mx-auto">
+        <main className="container pt-20 md:pt-8 pb-8 px-4 mx-auto w-full max-w-full">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/profiles" element={<Profiles />} />

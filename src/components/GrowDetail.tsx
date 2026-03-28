@@ -8,7 +8,8 @@ import { format, addDays, differenceInDays } from 'date-fns';
 import {
     Calendar, Camera, Save, Share2,
     Download, Trash2, Edit2, X, Droplets, Thermometer, Sun, Beaker, Plus, Wind,
-    AlertCircle, ArrowUpDown, Hexagon, ChevronDown, Zap, Activity
+    AlertCircle, ArrowUpDown, Hexagon, ChevronDown, Zap, Activity,
+    Clock, Leaf, Flower2
 } from 'lucide-react';
 
 const calculateVPD = (temp: number, humidity: number): string => {
@@ -97,6 +98,9 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
     const [newLogPh, setNewLogPh] = useState<string>('');
     const [newLogLightCycle, setNewLogLightCycle] = useState<string>('');
     const [newLogNutrients, setNewLogNutrients] = useState<NutrientEntry[]>([]);
+    
+    // UI State
+    const [showConsumption, setShowConsumption] = useState(false);
 
     // Nutrient Selection State
     const [selectedNutrientId, setSelectedNutrientId] = useState<string>('');
@@ -893,10 +897,48 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
         return bbcode;
     };
 
+    const copyToClipboard = (text: string) => {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text)
+                .then(() => alert(t.growDetail.bbcodeCopied))
+                .catch(() => fallbackCopyTextToClipboard(text));
+        } else {
+            fallbackCopyTextToClipboard(text);
+        }
+    };
+
+    const fallbackCopyTextToClipboard = (text: string) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.width = "2em";
+        textArea.style.height = "2em";
+        textArea.style.padding = "0";
+        textArea.style.border = "none";
+        textArea.style.outline = "none";
+        textArea.style.boxShadow = "none";
+        textArea.style.background = "transparent";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            document.execCommand('copy');
+            alert(t.growDetail.bbcodeCopied);
+        } catch (err) {
+            console.error('Fallback: Oops, unable to copy', err);
+            alert("Kopieren fehlgeschlagen!");
+        }
+
+        document.body.removeChild(textArea);
+    };
+
     const handleExportForum = (log: LogEntry) => {
         const bbcode = generateForumBBCode(log);
-        navigator.clipboard.writeText(bbcode);
-        alert(t.growDetail.bbcodeCopied);
+        copyToClipboard(bbcode);
+        // alert in fallback
     };
 
     const handleExportAllLogsForum = () => {
@@ -905,8 +947,8 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
         const fullReport = sortedLogs.map((log: any) => generateForumBBCode(log)).join('\n\n------------------------------------------------\n\n');
 
-        navigator.clipboard.writeText(fullReport);
-        alert(t.growDetail.bbcodeCopied);
+        copyToClipboard(fullReport);
+        // alert in fallback
     };
 
     const stages: Stage[] = ['seedling', 'vegetation', 'flowering', 'drying', 'curing'];
@@ -976,7 +1018,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                     </div>
 
                     {/* Grid: Date, Day, Stage */}
-                    <div className="grid grid-cols-3 gap-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         {/* Date */}
                         <div>
                             <label className="text-[10px] text-slate-400 block mb-0.5">{t.growDetail?.date || 'Date'}</label>
@@ -1107,7 +1149,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
                     {isAddingCustomNutrient && (
                         <div className="bg-slate-900 p-3 rounded space-y-3 mb-2 border border-slate-700">
-                            <div className="flex gap-2 items-center">
+                            <div className="flex flex-wrap sm:flex-nowrap gap-2 items-center">
                                 <input className="input text-sm flex-1" placeholder={t.growDetail.nutrientName} value={customNutrientName} onChange={e => setCustomNutrientName(e.target.value)} />
                                 <select className="input text-sm w-32" value={customNutrientType} onChange={e => setCustomNutrientType(e.target.value as any)}>
                                     <option value="veg">Veg</option>
@@ -1224,7 +1266,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                     {nutrients.length > 0 && (
                         <div className="space-y-2">
                             {nutrients.map((n, idx) => (
-                                <div key={idx} className="flex items-center gap-2 bg-purple-900/20 border border-purple-500/30 p-2 rounded text-sm">
+                                <div key={idx} className="flex flex-wrap md:flex-nowrap items-center gap-2 bg-purple-900/20 border border-purple-500/30 p-2 rounded text-sm">
                                     <span className="text-purple-300 font-bold min-w-[100px] truncate" title={n.name}>{n.name}:</span>
                                     <input
                                         type="number"
@@ -1261,7 +1303,7 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                 </div>
 
                 <textarea
-                    className="input min-h-[80px] text-sm"
+                    className="input min-h-[80px] text-sm w-full"
                     placeholder={t.growDetail.contentPlaceholder}
                     value={content}
                     onChange={e => setContent(e.target.value)}
@@ -1492,35 +1534,78 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                 )}
             </div>
 
-            {/* Stats Badges - Dashboard Style */}
-            <div className="flex flex-wrap gap-2 mb-4">
-                <div className="px-3 py-1 rounded-md text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-2 shadow-sm">
-                    <span>⏱️ {daysSinceStart} {t.growDetail?.totalDays || 'Days'}</span>
-                </div>
-                <div className="px-3 py-1 rounded-md text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 flex items-center gap-2 shadow-sm">
-                    <span>📆 {weeksSinceStart} {t.growDetail?.weeks || 'Weeks'}</span>
-                </div>
+            {/* Stats Badges - Redesigned Glass Tiles */}
+            <div className="flex flex-wrap gap-3 mb-8">
+                <button 
+                    type="button" 
+                    onClick={() => alert(`${daysSinceStart} ${t.growDetail?.totalDays || 'Tage'}`)} 
+                    className="flex flex-col items-center justify-center w-24 h-24 rounded-2xl glass-panel group transition-all duration-300 hover:border-emerald-500/50 hover:shadow-emerald-500/20 active:scale-95 px-2"
+                    title={t.growDetail?.totalDays || 'Tage'}
+                >
+                    <Clock size={24} className="text-emerald-400 mb-1.5 group-hover:scale-110 transition-transform" />
+                    <span className="text-base font-black text-white">{daysSinceStart}</span>
+                    <span className="text-[10px] font-bold text-white uppercase mt-0.5 tracking-wider">{t.growDetail?.totalDays || 'TAGE'}</span>
+                </button>
+                
+                <button 
+                    type="button" 
+                    onClick={() => alert(`${weeksSinceStart} ${t.growDetail?.weeks || 'Wochen'}`)} 
+                    className="flex flex-col items-center justify-center w-24 h-24 rounded-2xl glass-panel group transition-all duration-300 hover:border-blue-500/50 hover:shadow-blue-500/20 active:scale-95 px-2"
+                    title={t.growDetail?.weeks || 'Wochen'}
+                >
+                    <Calendar size={24} className="text-blue-400 mb-1.5 group-hover:scale-110 transition-transform" />
+                    <span className="text-base font-black text-white">{weeksSinceStart}</span>
+                    <span className="text-[10px] font-bold text-white uppercase mt-0.5 tracking-wider">{t.growDetail?.weeks || 'WOCHEN'}</span>
+                </button>
 
                 {/* Flower Stats (Only visible if flowering started) */}
                 {flowerDays > 0 && (
                     <>
-                        <div className="px-3 py-1 rounded-md text-sm font-bold bg-pink-500/10 text-pink-400 border border-pink-500/20 flex items-center gap-2 shadow-sm">
-                            <span>🌺 {flowerDays} {t.growDetail.flowerDays || 'Blütetage'}</span>
-                        </div>
-                        <div className="px-3 py-1 rounded-md text-sm font-bold bg-pink-500/10 text-pink-400 border border-pink-500/20 flex items-center gap-2 shadow-sm">
-                            <span>📅 {flowerWeeks} {t.growDetail.flowerWeeks || 'Blütewochen'}</span>
-                        </div>
+                        <button 
+                            type="button" 
+                            onClick={() => alert(`${flowerDays} ${t.growDetail?.flowerDays || 'Blütetage'}`)} 
+                            className="flex flex-col items-center justify-center w-24 h-24 rounded-2xl glass-panel group transition-all duration-300 hover:border-pink-500/50 hover:shadow-pink-500/20 active:scale-95 px-2"
+                            title={t.growDetail?.flowerDays || 'Blütetage'}
+                        >
+                            <Flower2 size={24} className="text-pink-400 mb-1.5 group-hover:scale-110 transition-transform" />
+                            <span className="text-base font-black text-white">{flowerDays}</span>
+                            <span className="text-[10px] font-bold text-white uppercase mt-0.5 tracking-wider">BT</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => alert(`${flowerWeeks} ${t.growDetail?.flowerWeeks || 'Blütewochen'}`)} 
+                            className="flex flex-col items-center justify-center w-24 h-24 rounded-2xl glass-panel group transition-all duration-300 hover:border-pink-500/50 hover:shadow-pink-500/20 active:scale-95 px-2"
+                            title={t.growDetail?.flowerWeeks || 'Blütewochen'}
+                        >
+                            <Calendar size={24} className="text-pink-400 mb-1.5 group-hover:scale-110 transition-transform" />
+                            <span className="text-base font-black text-white">{flowerWeeks}</span>
+                            <span className="text-[10px] font-bold text-white uppercase mt-0.5 tracking-wider">BW</span>
+                        </button>
                     </>
                 )}
 
                 {profile && (
                     <>
-                        <div className="px-3 py-1 rounded-md text-sm font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center gap-2 shadow-sm" title={t.growDetail.estVegiWeeks}>
-                            <span>🌱 {profile.vegiDurationWeeks} {t.growDetail.estVegiWeeks}</span>
-                        </div>
-                        <div className="px-3 py-1 rounded-md text-sm font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center gap-2 shadow-sm" title={t.growDetail.estFlowerWeeks}>
-                            <span>🌻 {profile.flowerDurationWeeks} {t.growDetail.estFlowerWeeks}</span>
-                        </div>
+                        <button 
+                            type="button" 
+                            onClick={() => alert(`${profile.vegiDurationWeeks} ${t.growDetail?.estVegiWeeks || 'Geplante Vegi'}`)} 
+                            className="flex flex-col items-center justify-center w-24 h-24 rounded-2xl glass-panel group transition-all duration-300 hover:border-purple-500/50 hover:shadow-purple-500/20 active:scale-95 px-2"
+                            title={t.growDetail?.estVegiWeeks || 'Geplante Vegi'}
+                        >
+                            <Leaf size={24} className="text-purple-400 mb-1.5 group-hover:scale-110 transition-transform" />
+                            <span className="text-base font-black text-white">{profile.vegiDurationWeeks}</span>
+                            <span className="text-[10px] font-bold text-white uppercase mt-0.5 tracking-wider">VEGI</span>
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => alert(`${profile.flowerDurationWeeks} ${t.growDetail?.estFlowerWeeks || 'Geplante Blüte'}`)} 
+                            className="flex flex-col items-center justify-center w-24 h-24 rounded-2xl glass-panel group transition-all duration-300 hover:border-orange-500/50 hover:shadow-orange-500/20 active:scale-95 px-2"
+                            title={t.growDetail?.estFlowerWeeks || 'Geplante Blüte'}
+                        >
+                            <Flower2 size={24} className="text-orange-400 mb-1.5 group-hover:scale-110 transition-transform" />
+                            <span className="text-base font-black text-white">{profile.flowerDurationWeeks}</span>
+                            <span className="text-[10px] font-bold text-white uppercase mt-0.5 tracking-wider">BLOOM</span>
+                        </button>
                     </>
                 )}
             </div>
@@ -1579,40 +1664,51 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
 
             {/* Consumption Stats Card */}
             {(consumptionStats.totalWater > 0 || Object.keys(consumptionStats.nutrientTotals).length > 0) && (
-                <div className="glass-panel p-6 mb-8 border-l-4 border-l-emerald-500 animate-fade-in">
-                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                        <Beaker size={20} className="text-emerald-400" /> {t.growDetail?.consumption || 'Verbrauch'}
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                        {/* Water Total */}
-                        {consumptionStats.totalWater > 0 && (
-                            <div className="bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg flex items-center gap-3">
-                                <div className="p-2 bg-blue-500/20 rounded-full text-blue-400">
-                                    <Droplets size={20} />
-                                </div>
-                                <div>
-                                    <span className="block text-xs text-slate-400 uppercase font-bold">{t.growDetail?.water ? t.growDetail.water.split('(')[0].trim() : 'Wasser'}</span>
-                                    <span className="text-xl font-bold text-blue-300">{consumptionStats.totalWater.toFixed(1)} L</span>
-                                </div>
-                            </div>
-                        )}
+                <div className="mb-8 animate-fade-in">
+                    <button 
+                        onClick={() => setShowConsumption(!showConsumption)}
+                        className="glass-panel p-4 flex justify-between items-center w-full transition-colors hover:bg-slate-800/80 border-l-4 border-l-emerald-500 rounded-lg shadow-md"
+                    >
+                        <div className="flex items-center gap-2 text-lg font-bold text-white">
+                            <Beaker size={20} className="text-emerald-400" /> {t.growDetail?.consumption || 'Verbrauch'}
+                        </div>
+                        <ChevronDown size={20} className={`text-slate-400 transform transition-transform ${showConsumption ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {showConsumption && (
+                        <div className="glass-panel mt-2 p-6 border-l-4 border-l-emerald-500 rounded-lg shadow-lg">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                {/* Water Total */}
+                                {consumptionStats.totalWater > 0 && (
+                                    <div className="bg-blue-900/20 border border-blue-500/30 p-3 rounded-lg flex items-center gap-3">
+                                        <div className="p-2 bg-blue-500/20 rounded-full text-blue-400">
+                                            <Droplets size={20} />
+                                        </div>
+                                        <div>
+                                            <span className="block text-xs text-slate-400 uppercase font-bold">{t.growDetail?.water ? t.growDetail.water.split('(')[0].trim() : 'Wasser'}</span>
+                                            <span className="text-xl font-bold text-blue-300">{consumptionStats.totalWater.toFixed(1)} L</span>
+                                        </div>
+                                    </div>
+                                )}
 
-                        {/* Nutrient Totals */}
-                        {Object.entries(consumptionStats.nutrientTotals).map(([key, data]) => {
-                            const [name] = key.split('_');
-                            return (
-                                <div key={key} className="bg-purple-900/20 border border-purple-500/30 p-3 rounded-lg flex items-center gap-3">
-                                    <div className="p-2 bg-purple-500/20 rounded-full text-purple-400">
-                                        <Beaker size={20} />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <span className="block text-xs text-slate-400 uppercase font-bold truncate" title={name}>{name}</span>
-                                        <span className="text-xl font-bold text-purple-300">{data.amount.toFixed(1)} {data.unit}</span>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                {/* Nutrient Totals */}
+                                {Object.entries(consumptionStats.nutrientTotals).map(([key, data]) => {
+                                    const [name] = key.split('_');
+                                    return (
+                                        <div key={key} className="bg-purple-900/20 border border-purple-500/30 p-3 rounded-lg flex items-center gap-3">
+                                            <div className="p-2 bg-purple-500/20 rounded-full text-purple-400">
+                                                <Beaker size={20} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span className="block text-xs text-slate-400 uppercase font-bold truncate" title={name}>{name}</span>
+                                                <span className="text-xl font-bold text-purple-300">{data.amount.toFixed(1)} {data.unit}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -1762,39 +1858,41 @@ const GrowDetailInner: React.FC<{ grow: any, profile: any, linkedSetups: any }> 
                             </div>
                         ) : (
                             <>
-                                <div className="absolute top-6 right-6 flex gap-2">
-                                    <button onClick={() => startEditLog(log)} className="bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-blue-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.common.edit}>
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button onClick={() => deleteLog(log.id)} className="bg-slate-800/50 hover:bg-red-900/20 text-slate-400 hover:text-red-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.common.delete}>
-                                        <Trash2 size={16} />
-                                    </button>
-                                    <button onClick={() => handleExportForum(log)} className="bg-slate-800/50 hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-400 p-2 rounded-lg border border-slate-700/50 transition-colors shadow-sm" title={t.growDetail.copyForForum}>
-                                        <Share2 size={16} />
-                                    </button>
-                                </div>
-
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="bg-slate-800 px-3 py-1 rounded text-center min-w-[80px]">
-                                        <span className="block text-sm font-bold text-white">{format(new Date(log.date), 'dd.MM.yyyy')}</span>
+                                <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-3 sm:gap-4">
+                                    <div className="flex items-center gap-3 min-w-0 pr-2">
+                                        <div className="bg-slate-800 px-3 py-1 rounded text-center min-w-[80px] shrink-0">
+                                            <span className="block text-sm font-bold text-white">{format(new Date(log.date), 'dd.MM.yyyy')}</span>
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h4 className="text-base sm:text-lg font-bold text-emerald-400 break-words line-clamp-2">{log.title}</h4>
+                                            <span className="text-xs text-slate-500 block truncate">
+                                                {(() => {
+                                                    // Re-calculate metadata for display
+                                                    // Note: We could store this in the log object, but calculating it ensures it's always up to date with start date changes
+                                                    const meta = generateLogMetadata(log.date, log.stage);
+                                                    return (
+                                                        <>
+                                                            {t.growDetail.day} {meta.day} / {t.growDetail.week} {meta.week} • {(t.profiles.stages as any)[log.stage] || log.stage}
+                                                            {meta.flowerDay && (
+                                                                <> • BT {meta.flowerDay} / BW {meta.flowerWeek}</>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="text-lg font-bold text-emerald-400">{log.title}</h4>
-                                        <span className="text-xs text-slate-500">
-                                            {(() => {
-                                                // Re-calculate metadata for display
-                                                // Note: We could store this in the log object, but calculating it ensures it's always up to date with start date changes
-                                                const meta = generateLogMetadata(log.date, log.stage);
-                                                return (
-                                                    <>
-                                                        {t.growDetail.day} {meta.day} / {t.growDetail.week} {meta.week} • {(t.profiles.stages as any)[log.stage] || log.stage}
-                                                        {meta.flowerDay && (
-                                                            <> • BT {meta.flowerDay} / BW {meta.flowerWeek}</>
-                                                        )}
-                                                    </>
-                                                );
-                                            })()}
-                                        </span>
+                                    
+                                    <div className="flex gap-3 sm:gap-4 shrink-0 self-end sm:self-start">
+                                        <button onClick={() => startEditLog(log)} className="bg-slate-800/50 hover:bg-slate-700 text-slate-400 hover:text-blue-400 p-2.5 sm:p-3 rounded-xl border border-slate-700/50 transition-colors shadow-lg group" title={t.common.edit}>
+                                            <Edit2 size={20} className="group-hover:scale-110 transition-transform" />
+                                        </button>
+                                        <button onClick={() => deleteLog(log.id)} className="bg-slate-800/50 hover:bg-red-900/20 text-slate-400 hover:text-red-400 p-2.5 sm:p-3 rounded-xl border border-slate-700/50 transition-colors shadow-lg group" title={t.common.delete}>
+                                            <Trash2 size={20} className="group-hover:scale-110 transition-transform" />
+                                        </button>
+                                        <button onClick={() => handleExportForum(log)} className="bg-slate-800/50 hover:bg-emerald-900/20 text-slate-400 hover:text-emerald-400 p-2.5 sm:p-3 rounded-xl border border-slate-700/50 transition-colors shadow-lg group" title={t.growDetail.copyForForum}>
+                                            <Share2 size={20} className="group-hover:scale-110 transition-transform" />
+                                        </button>
                                     </div>
                                 </div>
 
